@@ -1,0 +1,190 @@
+////package com.example.DonourSecu;
+////
+////import javax.crypto.Cipher;
+////import javax.crypto.spec.SecretKeySpec;
+////import java.util.Base64;
+////
+////public class AESUtil {
+////    private static final String ALGORITHM = "AES";
+////
+////    private static SecretKeySpec getKeySpec() {
+////        String key = System.getenv("AESKey");
+////        if (key == null || key.isEmpty()) {
+////            throw new IllegalStateException("AES_SECRET_KEY not found in environment!");
+////        }
+////        else {
+////            System.out.println("✅ AES Key loaded successfully.");
+////        }
+////        byte[] decodedKey = Base64.getDecoder().decode(key);
+////        return new SecretKeySpec(decodedKey, ALGORITHM);
+////    }
+////
+////    public static String encrypt(String data) throws Exception {
+////        Cipher cipher = Cipher.getInstance("AES");
+////        cipher.init(Cipher.ENCRYPT_MODE, getKeySpec());
+////        byte[] encrypted = cipher.doFinal(data.getBytes());
+////        return Base64.getEncoder().encodeToString(encrypted);
+////    }
+////
+////    public static String decrypt(String encryptedData) throws Exception {
+////        Cipher cipher = Cipher.getInstance("AES");
+////        cipher.init(Cipher.DECRYPT_MODE, getKeySpec());
+////        byte[] decoded = Base64.getDecoder().decode(encryptedData);
+////        return new String(cipher.doFinal(decoded));
+////    }
+////}
+//package com.komal.template_backend.Util;
+//
+//import javax.crypto.Cipher;
+//import javax.crypto.spec.IvParameterSpec;
+//import javax.crypto.spec.SecretKeySpec;
+//import java.nio.charset.StandardCharsets;
+//import java.security.SecureRandom;
+//import java.util.Arrays;
+//import java.util.Base64;
+//
+//public class AESUtil {
+//
+//    private static final String ALGORITHM = "AES";
+//    private static final String TRANSFORMATION = "AES/CBC/PKCS5Padding";
+//
+//    // Load key from environment variable
+//    private static SecretKeySpec getKeySpec() {
+//        String key = System.getenv("AESKey"); // must be 32 bytes for AES-256
+//        if (key == null || key.isEmpty()) {
+//            throw new IllegalStateException("AESKey not found in environment!");
+//        } else {
+//            System.out.println(" AES Key loaded successfully.");
+//        }
+//        byte[] decodedKey = Base64.getDecoder().decode(key);
+//        if (decodedKey.length != 32) {
+//            throw new IllegalStateException("AESKey must be 32 bytes for AES-256!");
+//        }
+//        return new SecretKeySpec(decodedKey, ALGORITHM);
+//    }
+//
+//    // Encrypt with random IV per record
+//    public static String encrypt(String data) throws Exception {
+//        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+//        byte[] iv = new byte[16]; // 16 bytes for AES block
+//        SecureRandom random = new SecureRandom();
+//        random.nextBytes(iv);
+//        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+//
+//        cipher.init(Cipher.ENCRYPT_MODE, getKeySpec(), ivSpec);
+//        byte[] encrypted = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
+//
+//        // Prepend IV to encrypted data
+//        byte[] combined = new byte[iv.length + encrypted.length];
+//        System.arraycopy(iv, 0, combined, 0, iv.length);
+//        System.arraycopy(encrypted, 0, combined, iv.length, encrypted.length);
+//
+//        return Base64.getEncoder().encodeToString(combined);
+//    }
+//
+//    // Decrypt with IV extracted from data
+//    public static String decrypt(String encryptedData) throws Exception {
+//        byte[] combined = Base64.getDecoder().decode(encryptedData);
+//        byte[] iv = Arrays.copyOfRange(combined, 0, 16);
+//        byte[] encrypted = Arrays.copyOfRange(combined, 16, combined.length);
+//
+//        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+//        cipher.init(Cipher.DECRYPT_MODE, getKeySpec(), new IvParameterSpec(iv));
+//        byte[] decrypted = cipher.doFinal(encrypted);
+//
+//        return new String(decrypted, StandardCharsets.UTF_8);
+//    }
+//}
+// AESUtil.java
+package com.komal.template_backend.Util;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.UUID;
+
+public class AESUtil {
+
+    private static final String ALGORITHM = "AES";
+    private static final String TRANSFORMATION = "AES/CBC/PKCS5Padding";
+    private static final String SPECIAL_CHARS = "!@#$%^&*()_+";
+
+    // Generate dynamic AES key per record
+    public static SecretKeySpec generateKey(String mobile, String uniqueId, String dob, LocalDateTime donationDate, String salt) throws Exception {
+        int month = donationDate.getMonthValue();
+        String monthSymbol = String.valueOf(SPECIAL_CHARS.charAt((month - 1) % SPECIAL_CHARS.length()));
+        String combined = mobile + uniqueId + dob + donationDate.toString() + salt + monthSymbol;
+        MessageDigest sha = MessageDigest.getInstance("SHA-256");
+        byte[] keyBytes = sha.digest(combined.getBytes(StandardCharsets.UTF_8));
+        return new SecretKeySpec(keyBytes, ALGORITHM);
+    }
+    // Encrypt with random IV
+    public static String encrypt(String data, SecretKeySpec key) throws Exception {
+        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+        byte[] iv = new byte[16];
+        new SecureRandom().nextBytes(iv);
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        cipher.init(Cipher.ENCRYPT_MODE, key, ivSpec);
+        byte[] encrypted = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
+        byte[] combined = new byte[iv.length + encrypted.length];
+        System.arraycopy(iv, 0, combined, 0, iv.length);
+        System.arraycopy(encrypted, 0, combined, iv.length, encrypted.length);
+        return Base64.getEncoder().encodeToString(combined);
+    }
+    public static String decrypt(String encryptedData, SecretKeySpec key) throws Exception {
+        if (encryptedData == null || encryptedData.isEmpty()) return null; // <--- safe check
+        byte[] combined = Base64.getDecoder().decode(encryptedData);
+        byte[] iv = Arrays.copyOfRange(combined, 0, 16);
+        byte[] encrypted = Arrays.copyOfRange(combined, 16, combined.length);
+
+        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+        cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
+        byte[] decrypted = cipher.doFinal(encrypted);
+
+        return new String(decrypted, StandardCharsets.UTF_8);
+    }
+    // Decrypt with IV
+//    public static String decrypt(String encryptedData, SecretKeySpec key) throws Exception {
+//        byte[] combined = Base64.getDecoder().decode(encryptedData);
+//        byte[] iv = Arrays.copyOfRange(combined, 0, 16);
+//        byte[] encrypted = Arrays.copyOfRange(combined, 16, combined.length);
+//        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+//        cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
+//        byte[] decrypted = cipher.doFinal(encrypted);
+//        return new String(decrypted, StandardCharsets.UTF_8);
+//    }
+
+    // Generate random salt
+    public static String generateSalt() {
+        return UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    // Simple reversible obfuscation for storing key
+    public static String obfuscateKey(SecretKeySpec key) {
+        byte[] bytes = key.getEncoded();
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte) (bytes[i] + 3); // simple addition
+        }
+        return Base64.getEncoder().encodeToString(bytes);
+    }
+
+    public static SecretKeySpec deobfuscateKey(String obfuscatedKey) {
+        byte[] bytes = Base64.getDecoder().decode(obfuscatedKey);
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte) (bytes[i] - 3); // reverse addition
+        }
+        return new SecretKeySpec(bytes, ALGORITHM);
+    }
+
+    // Optional: masking
+    public static String maskMobile(String mobile) {
+        if (mobile == null || mobile.length() < 8) return mobile;
+        return mobile.replaceAll("(\\d{2})\\d{4,6}(\\d{2})", "$1******$2");
+    }
+}

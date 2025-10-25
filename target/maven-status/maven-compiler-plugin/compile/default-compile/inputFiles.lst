@@ -1,0 +1,16 @@
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\config\WebConfig.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\controller\AuthController.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\controller\HeroController.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\controller\PressReleasesController.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\controller\ProgrammeController.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\controller\PublicationController.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\model\Hero.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\model\PressRelease.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\model\Programme.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\model\Publication.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\repo\HeroRepository.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\repo\PressReleaseRepository.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\repo\ProgrammeRepository.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\repo\PublicationRepository.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\service\HeroService.java
+E:\SpringBoot_Learning\template-backend\template-backend\src\main\java\com\komal\template_backend\TemplateBackendApplication.java
