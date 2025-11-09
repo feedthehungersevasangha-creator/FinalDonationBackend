@@ -185,7 +185,6 @@ public class Donourentity {
     private String idType;
     private String uniqueId;  // 🔐 encrypted
     private String uniqueIdHash;   // HMAC for search
-    private String address;
 
     private String frequency;
     private double amount;
@@ -196,8 +195,55 @@ public class Donourentity {
     private String ifscHash;       // HMAC
     private String accountNumber; //
     private String accountNumberHash; // HMAC
+    private String paymentId;
+    private String orderId;
+    private String status;
+    private String declaration;
+
+    public String getDeclaration() {
+        return declaration;
+    }
+
+    public void setDeclaration(String declaration) {
+        this.declaration = declaration;
+    }
 
     private LocalDateTime donationDate = LocalDateTime.now();
+
+    public String getSignature() {
+        return signature;
+    }
+
+    public void setSignature(String signature) {
+        this.signature = signature;
+    }
+
+    private String signature;
+    public String getPaymentId() {
+        return paymentId;
+    }
+
+    public void setPaymentId(String paymentId) {
+        this.paymentId = paymentId;
+    }
+
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+
 
     // New fields for per-record dynamic key
     private String encSalt;   // random salt per record
@@ -238,8 +284,7 @@ public class Donourentity {
     public String getUniqueId() { return uniqueId; }
     public void setUniqueId(String uniqueId) { this.uniqueId = uniqueId; }
 
-    public String getAddress() { return address; }
-    public void setAddress(String address) { this.address = address; }
+    
 
     public String getFrequency() { return frequency; }
     public void setFrequency(String frequency) { this.frequency = frequency; }
@@ -267,4 +312,6 @@ public class Donourentity {
 
     public int getEncMonth() { return encMonth; }
     public void setEncMonth(int encMonth) { this.encMonth = encMonth; }
+
+
 }
