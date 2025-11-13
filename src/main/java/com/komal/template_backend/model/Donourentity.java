@@ -200,6 +200,42 @@ public class Donourentity {
     private String status;
     private String declaration;
 
+    public String getWallet() {
+        return wallet;
+    }
+
+    public void setWallet(String wallet) {
+        this.wallet = wallet;
+    }
+
+    public String getUpiId() {
+        return upiId;
+    }
+
+    public void setUpiId(String upiId) {
+        this.upiId = upiId;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
+    }
+
+    private String wallet;
+    private String upiId;
+    private String currency;
+    public String getPaymentMethod() {
+        return PaymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        PaymentMethod = paymentMethod;
+    }
+
+    private String PaymentMethod;
     public String getDeclaration() {
         return declaration;
     }
@@ -208,7 +244,7 @@ public class Donourentity {
         this.declaration = declaration;
     }
 
-    private LocalDateTime donationDate = LocalDateTime.now();
+    private LocalDateTime donationDate=LocalDateTime.now() ;
 
     public String getSignature() {
         return signature;
@@ -284,7 +320,7 @@ public class Donourentity {
     public String getUniqueId() { return uniqueId; }
     public void setUniqueId(String uniqueId) { this.uniqueId = uniqueId; }
 
-    
+
 
     public String getFrequency() { return frequency; }
     public void setFrequency(String frequency) { this.frequency = frequency; }
