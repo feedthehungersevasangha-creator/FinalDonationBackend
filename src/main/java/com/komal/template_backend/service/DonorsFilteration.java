@@ -58,6 +58,17 @@ public class DonorsFilteration {
                 .filter(d -> matchesIgnoreCaseTrimmed(d.getIdType(), params.get("idType")))
                 .filter(d -> matchesIgnoreCaseTrimmed(d.getBankName(), params.get("bankName")))
                 .filter(d -> matchesIgnoreCaseTrimmed(d.getIfsc(), params.get("ifsc")))
+            .filter(d -> matchesIgnoreCaseTrimmed(d.getWallet(), params.get("wallet")))
+                .filter(d -> matchesIgnoreCaseTrimmed(d.getUpiId(), params.get("upiId")))
+                .filter(d -> matchesIgnoreCaseTrimmed(d.getPaymentMethod(), params.get("paymentMethod")))
+                .filter(d -> matchesIgnoreCaseTrimmed(d.getCurrency(), params.get("currency")))
+
+                // Razorpay fields
+                .filter(d -> matchesIgnoreCaseTrimmed(d.getPaymentId(), params.get("paymentId")))
+                .filter(d -> matchesIgnoreCaseTrimmed(d.getOrderId(), params.get("orderId")))
+                .filter(d -> matchesIgnoreCaseTrimmed(d.getSignature(), params.get("signature")))
+                .filter(d -> matchesIgnoreCaseTrimmed(d.getStatus(), params.get("status")))
+                .filter(d -> matchesIgnoreCaseTrimmed(d.getDeclaration(), params.get("declaration")))
                 // Amount range
                 .filter(d -> params.get("minAmount") == null ||
                         d.getAmount() >= parseDoubleSafe(params.get("minAmount")))
