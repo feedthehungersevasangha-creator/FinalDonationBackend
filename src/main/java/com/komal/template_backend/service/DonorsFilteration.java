@@ -68,7 +68,8 @@ public class DonorsFilteration {
                 .filter(d -> matchesIgnoreCaseTrimmed(d.getOrderId(), params.get("orderId")))
                 .filter(d -> matchesIgnoreCaseTrimmed(d.getSignature(), params.get("signature")))
                 .filter(d -> matchesIgnoreCaseTrimmed(d.getStatus(), params.get("status")))
-                .filter(d -> matchesIgnoreCaseTrimmed(d.getDeclaration(), params.get("declaration")))
+                .filter(d -> params.get("declaration") == null 
+                    || d.isDeclaration() == Boolean.parseBoolean(params.get("declaration")))
                 // Amount range
                 .filter(d -> params.get("minAmount") == null ||
                         d.getAmount() >= parseDoubleSafe(params.get("minAmount")))
