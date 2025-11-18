@@ -14,6 +14,9 @@ public class MailService {
     private final Logger logger = LoggerFactory.getLogger(MailService.class);
     @Value("${app.mail.recipient}")   // 👈 recipient from properties
     private String hostEmail;
+    @Value("${app.mail.username}")   // 👈 recipient from properties
+    private String adminEmail;
+
 
     @Autowired
     public MailService(JavaMailSender mailSender) {
@@ -22,6 +25,7 @@ public class MailService {
 
     public void sendMail(String to, String subject, String text) {
         SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(adminEmail); // Important
         message.setTo(to);
         message.setSubject(subject);
         message.setText(text);
