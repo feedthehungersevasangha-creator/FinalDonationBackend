@@ -22,7 +22,6 @@ public class MailService {
 
     public void sendMail(String to, String subject, String text) {
         SimpleMailMessage message = new SimpleMailMessage();
-        // message.setFrom(hostEmail); // Important
         message.setTo(to);
         message.setSubject(subject);
         message.setText(text);
@@ -49,6 +48,7 @@ public class MailService {
         }
     public  void sendDonationReceipt(String toEmail, String donorName, double amount, String paymentId) {
         SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(hostEmail); // Important
         message.setTo(toEmail);
         message.setSubject("Thank You for Your Donation ❤️");
 
