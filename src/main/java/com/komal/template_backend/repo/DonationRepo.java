@@ -9,5 +9,6 @@ import java.util.Optional;
 public interface DonationRepo extends MongoRepository<Donourentity,String> {
     Optional<Donourentity> findByOrderId(String orderId);
     int deleteByStatusAndDonationDateBefore(String status, LocalDateTime cutoff);
+    Optional<Donourentity> findBySubscriptionId(String subscriptionId);
 
 }
