@@ -522,5 +522,10 @@ public class DonationService {
 
         return d;
     }
+           // Delete donor by ID (used in DonationController)
+public void deleteById(String id) {
+    donationRepo.deleteById(id);
+}
+
 }
 
