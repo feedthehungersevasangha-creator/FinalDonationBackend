@@ -15,6 +15,8 @@
 // @Service
 // public class DonationService {
 //     private final DonationRepo donationRepo;
+//     @Autowired
+//     private PdfReceiptServic pdfReceiptService;
 
 //     @Autowired
 //     private MailService mailService;
@@ -89,20 +91,10 @@
 //             Donourentity updated = donationRepo.save(existing);
 
 //             // send mail after successful payment
-//             try {
-//                 mailService.sendDonationReceipt(
-//                         safeDecrypt(donor.getEmail(),key),
-//                         existing.getFirstName() + " " + existing.getLastName(),
-//                         existing.getAmount(),
-//                         donor.getPaymentId()
-//                 );
-//             } catch (Exception e) {
-//                 System.err.println("⚠️ Failed to send donation receipt: " + e.getMessage());
-//             }
+           
 
 //             return updated;
 //         }
-
 //         // 🟢 New donor (first time)
 //         System.out.println("🟢 New donor — performing encryption");
 
@@ -112,7 +104,6 @@
 
 //         int month = donor.getDonationDate().getMonthValue();
 //         donor.setEncMonth(month);
-
 //         // Generate AES key
 //         SecretKeySpec key = AESUtil.generateKey(
 //                 donor.getMobile() != null ? donor.getMobile() : "",
@@ -121,10 +112,8 @@
 //                 donor.getDonationDate(),
 //                 salt
 //         );
-
 //         // Store obfuscated key
 //         donor.setEncKey(AESUtil.obfuscateKey(key));
-
 //         // Encrypt only non-null fields
 //         donor.setEmail(AESUtil.encryptIfNotNull(donor.getEmail(), key));
 //         donor.setMobile(AESUtil.encryptIfNotNull(donor.getMobile(), key));
@@ -137,18 +126,18 @@
 //         // send receipt if payment already successful
 //         SecretKeySpec key2 = AESUtil.deobfuscateKey(donor.getEncKey());
 
-//         if (donor.getPaymentId() != null) {
-//             try {
-//                 mailService.sendDonationReceipt(
-//                         safeDecrypt(donor.getEmail(),key2),
-//                         donor.getFirstName() + " " + donor.getLastName(),
-//                         donor.getAmount(),
-//                         donor.getPaymentId()
-//                 );
-//             } catch (Exception e) {
-//                 System.err.println("⚠️ Failed to send donation receipt: " + e.getMessage());
-//             }
-//         }
+//         // if (donor.getPaymentId() != null) {
+//         //     try {
+//         //         mailService.sendDonationReceipt(
+//         //                 safeDecrypt(donor.getEmail(),key2),
+//         //                 donor.getFirstName() + " " + donor.getLastName(),
+//         //                 donor.getAmount(),
+//         //                 donor.getPaymentId()
+//         //         );
+//         //     } catch (Exception e) {
+//         //         System.err.println("⚠️ Failed to send donation receipt: " + e.getMessage());
+//         //     }
+//         // }
 //         return savedDonor;
 //     }
 //     // Safe decryption helper
@@ -256,10 +245,36 @@
 
 //         return donationRepo.save(existing);
 //     }
+//     public Donourentity findByIdDecrypt(String id) {
+//         Donourentity d = donationRepo.findById(id).orElse(null);
+//         if (d == null) return null;
+
+//         try {
+//             SecretKeySpec key = AESUtil.deobfuscateKey(d.getEncKey());
+
+//             d.setEmail(safeDecrypt(d.getEmail(), key));
+//             d.setMobile(safeDecrypt(d.getMobile(), key));
+//             d.setUniqueId(safeDecrypt(d.getUniqueId(), key));
+//             d.setBankName(safeDecrypt(d.getBankName(), key));
+//             d.setIfsc(safeDecrypt(d.getIfsc(), key));
+//             d.setAccountNumber(safeDecrypt(d.getAccountNumber(), key));
+//             d.setPaymentMethod(safeDecrypt(d.getPaymentMethod(), key));
+//             d.setPaymentInfo(safeDecrypt(d.getPaymentInfo(), key));
+//             d.setUpiId(safeDecrypt(d.getUpiId(), key));
+//             d.setWallet(safeDecrypt(d.getWallet(), key));
+//             d.setPayerEmail(safeDecrypt(d.getPayerEmail(), key));
+//             d.setPayerContact(safeDecrypt(d.getPayerContact(), key));
+
+//         } catch (Exception ex) {
+//             System.err.println("❌ Decrypt failed: " + ex.getMessage());
+//         }
+
+//         return d;
+//     }
+
 
 // }
-
-//--------------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
 package com.komal.template_backend.service;
 
 import com.komal.template_backend.Util.AESUtil;
@@ -271,10 +286,14 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
+
 @Service
 public class DonationService {
+
     private final DonationRepo donationRepo;
+
     @Autowired
     private PdfReceiptServic pdfReceiptService;
 
@@ -285,86 +304,79 @@ public class DonationService {
         this.donationRepo = donationRepo;
     }
 
+    // =====================================================================================
+    // SAVE DONATION (for create-order, verify, subscription-charged, mandate-authorized)
+    // =====================================================================================
     public Donourentity saveDonation(Donourentity donor) throws Exception {
 
+        // Always save in IST
         if (donor.getDonationDate() == null) {
-            donor.setDonationDate(LocalDateTime.now());
+            donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
         }
 
+        // Only search if orderId is present
+        Donourentity existing = null;
+        if (donor.getOrderId() != null) {
+            existing = donationRepo.findByOrderId(donor.getOrderId()).orElse(null);
+        }
 
-        // 🔍 Check if this donor already exists (update case)
-        Donourentity existing = donationRepo.findByOrderId(donor.getOrderId()).orElse(null);
-
+        // ===========================================
+        // UPDATE EXISTING (VERIFY / WEBHOOK)
+        // ===========================================
         if (existing != null) {
-            System.out.println("🟡 Updating existing donor — skipping re-encryption");
-            SecretKeySpec key = AESUtil.deobfuscateKey(donor.getEncKey());
 
-            // just update payment info and status
+            System.out.println("🟡 Updating existing donor - encryption preserved");
+
+            SecretKeySpec key = AESUtil.deobfuscateKey(existing.getEncKey());
+
             existing.setPaymentId(donor.getPaymentId());
             existing.setSignature(donor.getSignature());
             existing.setStatus(donor.getPaymentId() != null ? "SUCCESS" : "PENDING");
-// ----------------------
-// Update subscription / mandate details (add these inside existing != null block)
-// ----------------------
-            if (donor.getSubscriptionId() != null) {
-                existing.setSubscriptionId(donor.getSubscriptionId());
-            }
 
-            if (donor.getSubscriptionStatus() != null) {
-                existing.setSubscriptionStatus(donor.getSubscriptionStatus());
-            }
+            // Subscription / mandate extra fields
+            if (donor.getSubscriptionId() != null) existing.setSubscriptionId(donor.getSubscriptionId());
+            if (donor.getSubscriptionStatus() != null) existing.setSubscriptionStatus(donor.getSubscriptionStatus());
+            if (donor.getRazorpayMandateId() != null) existing.setRazorpayMandateId(donor.getRazorpayMandateId());
+            if (donor.getMandateStartDate() != null) existing.setMandateStartDate(donor.getMandateStartDate());
+            if (donor.getMandateEndDate() != null) existing.setMandateEndDate(donor.getMandateEndDate());
+            if (donor.getMandateStatus() != null) existing.setMandateStatus(donor.getMandateStatus());
+            if (donor.getMandateAmount() != null) existing.setMandateAmount(donor.getMandateAmount());
+            if (donor.getMandateFrequency() != null) existing.setMandateFrequency(donor.getMandateFrequency());
+            if (donor.getMonthlyAmount() != null) existing.setMonthlyAmount(donor.getMonthlyAmount());
+            if (donor.getDonorMandateRefId() != null) existing.setDonorMandateRefId(donor.getDonorMandateRefId());
 
-            if (donor.getRazorpayMandateId() != null) {
-                existing.setRazorpayMandateId(donor.getRazorpayMandateId());
-            }
+            // Encrypted Razorpay fields
+            if (donor.getPaymentMethod() != null)
+                existing.setPaymentMethod(AESUtil.encryptIfNotNull(donor.getPaymentMethod(), key));
 
-            if (donor.getMandateStartDate() != null) {
-                existing.setMandateStartDate(donor.getMandateStartDate());
-            }
+            if (donor.getWallet() != null)
+                existing.setWallet(AESUtil.encryptIfNotNull(donor.getWallet(), key));
 
-            if (donor.getMandateEndDate() != null) {
-                existing.setMandateEndDate(donor.getMandateEndDate());
-            }
+            if (donor.getUpiId() != null)
+                existing.setUpiId(AESUtil.encryptIfNotNull(donor.getUpiId(), key));
 
-            if (donor.getMandateStatus() != null) {
-                existing.setMandateStatus(donor.getMandateStatus());
-            }
+            if (donor.getPayerEmail() != null)
+                existing.setPayerEmail(AESUtil.encryptIfNotNull(donor.getPayerEmail(), key));
 
-            if (donor.getMandateAmount() != null) {
-                existing.setMandateAmount(donor.getMandateAmount());
-            }
+            if (donor.getPayerContact() != null)
+                existing.setPayerContact(AESUtil.encryptIfNotNull(donor.getPayerContact(), key));
 
-            if (donor.getMandateFrequency() != null) {
-                existing.setMandateFrequency(donor.getMandateFrequency());
-            }
+            if (donor.getPaymentInfo() != null)
+                existing.setPaymentInfo(AESUtil.encryptIfNotNull(donor.getPaymentInfo(), key));
 
-// keep monthly amount if provided
-            if (donor.getMonthlyAmount() != null) {
-                existing.setMonthlyAmount(donor.getMonthlyAmount());
-            }
-
-// donor-provided reference id for mandate (if you create one)
-            if (donor.getDonorMandateRefId() != null) {
-                existing.setDonorMandateRefId(donor.getDonorMandateRefId());
-            }
-
-            Donourentity updated = donationRepo.save(existing);
-
-            // send mail after successful payment
-           
-
-            return updated;
+            return donationRepo.save(existing);
         }
-        // 🟢 New donor (first time)
+
+        // ===========================================
+        // NEW DONOR (ENCRYPT EVERYTHING)
+        // ===========================================
         System.out.println("🟢 New donor — performing encryption");
 
-        // Generate salt
         String salt = AESUtil.generateSalt();
         donor.setEncSalt(salt);
+        donor.setEncMonth(donor.getDonationDate().getMonthValue());
 
-        int month = donor.getDonationDate().getMonthValue();
-        donor.setEncMonth(month);
-        // Generate AES key
+        // Generate key using identity + date + salt
         SecretKeySpec key = AESUtil.generateKey(
                 donor.getMobile() != null ? donor.getMobile() : "",
                 donor.getUniqueId() != null ? donor.getUniqueId() : "",
@@ -372,47 +384,34 @@ public class DonationService {
                 donor.getDonationDate(),
                 salt
         );
-        // Store obfuscated key
+
         donor.setEncKey(AESUtil.obfuscateKey(key));
-        // Encrypt only non-null fields
+
+        // Encrypt sensitive fields
         donor.setEmail(AESUtil.encryptIfNotNull(donor.getEmail(), key));
         donor.setMobile(AESUtil.encryptIfNotNull(donor.getMobile(), key));
         donor.setUniqueId(AESUtil.encryptIfNotNull(donor.getUniqueId(), key));
         donor.setBankName(AESUtil.encryptIfNotNull(donor.getBankName(), key));
         donor.setIfsc(AESUtil.encryptIfNotNull(donor.getIfsc(), key));
         donor.setAccountNumber(AESUtil.encryptIfNotNull(donor.getAccountNumber(), key));
-        donor.setStatus(donor.getPaymentId() != null ? "SUCCESS" : "PENDING");
-        Donourentity savedDonor = donationRepo.save(donor);
-        // send receipt if payment already successful
-        SecretKeySpec key2 = AESUtil.deobfuscateKey(donor.getEncKey());
 
-        // if (donor.getPaymentId() != null) {
-        //     try {
-        //         mailService.sendDonationReceipt(
-        //                 safeDecrypt(donor.getEmail(),key2),
-        //                 donor.getFirstName() + " " + donor.getLastName(),
-        //                 donor.getAmount(),
-        //                 donor.getPaymentId()
-        //         );
-        //     } catch (Exception e) {
-        //         System.err.println("⚠️ Failed to send donation receipt: " + e.getMessage());
-        //     }
-        // }
-        return savedDonor;
+        donor.setStatus(donor.getPaymentId() != null ? "SUCCESS" : "PENDING");
+
+        return donationRepo.save(donor);
     }
-    // Safe decryption helper
+
+    // =====================================================================================
+    // SAFE DECRYPT UTIL
+    // =====================================================================================
     private String safeDecrypt(String data, SecretKeySpec key) {
-        try {
-            if (data != null && !data.isEmpty()) {
-                return AESUtil.decrypt(data, key);
-            }
-        } catch (Exception e) {
-            System.err.println("Decryption failed: " + e.getMessage());
-        }
+        try { if (data != null && !data.isEmpty()) return AESUtil.decrypt(data, key); }
+        catch (Exception ignored) {}
         return null;
     }
 
-    // Fetch all donors with decryption & masking
+    // =====================================================================================
+    // FETCH ALL DONORS (DECRYPT + MASK)
+    // =====================================================================================
     public List<Donourentity> getAllDonors() {
         List<Donourentity> donors = donationRepo.findAll();
 
@@ -433,40 +432,29 @@ public class DonationService {
                 d.setPayerEmail(safeDecrypt(d.getPayerEmail(), key));
                 d.setPayerContact(safeDecrypt(d.getPayerContact(), key));
 
-            } catch (Exception e) {
-                System.err.println("Skipping decryption/masking for record: " + e.getMessage());
-            }
+            } catch (Exception ignored) {}
         });
 
         return donors;
     }
-    public void deleteById(String id) {
-        donationRepo.deleteById(id);
-    }
-    // helper method to update encrypted data
-    private void updateEncryptedField(
-            java.util.function.Consumer<String> setter,
-            String newValue,
-            SecretKeySpec key
-    ) {
-        try {
-            if (newValue != null && !newValue.isBlank()) {
-                setter.accept(AESUtil.encrypt(newValue, key));
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Encryption update failed: " + e.getMessage());
+
+    // =====================================================================================
+    // UPDATE DONOR (ADMIN PANEL)
+    // =====================================================================================
+    private void updateEncryptedField(java.util.function.Consumer<String> setter,
+                                      String newValue,
+                                      SecretKeySpec key) throws Exception {
+        if (newValue != null && !newValue.isBlank()) {
+            setter.accept(AESUtil.encrypt(newValue, key));
         }
     }
 
     public Donourentity updateDonor(String id, Donourentity updated) throws Exception {
 
-        Donourentity existing = donationRepo.findById(id).orElse(null);
-        if (existing == null) throw new Exception("Donor not found");
-
-        // decrypt key for editing encrypted fields
+        Donourentity existing = donationRepo.findById(id).orElseThrow(() -> new Exception("Donor not found"));
         SecretKeySpec key = AESUtil.deobfuscateKey(existing.getEncKey());
 
-        // ------------------ PLAIN FIELDS --------------------
+        // Plain editable fields
         if (updated.getFirstName() != null) existing.setFirstName(updated.getFirstName());
         if (updated.getLastName() != null) existing.setLastName(updated.getLastName());
         if (updated.getDob() != null) existing.setDob(updated.getDob());
@@ -474,28 +462,29 @@ public class DonationService {
         if (updated.getPaymentMode() != null) existing.setPaymentMode(updated.getPaymentMode());
         if (updated.getStatus() != null) existing.setStatus(updated.getStatus());
         if (updated.getDeclaration() != null) existing.setDeclaration(updated.getDeclaration());
-
-        if (updated.getPaymentMethod() != null) existing.setPaymentMethod(updated.getPaymentMethod());
-        if (updated.getWallet() != null) existing.setWallet(updated.getWallet());
-        if (updated.getUpiId() != null) existing.setUpiId(updated.getUpiId());
         if (updated.getCurrency() != null) existing.setCurrency(updated.getCurrency());
 
-        // Razorpay fields
+        // Razorpay fields (ENCRYPT THESE)
+        updateEncryptedField(existing::setPaymentMethod, updated.getPaymentMethod(), key);
+        updateEncryptedField(existing::setWallet, updated.getWallet(), key);
+        updateEncryptedField(existing::setUpiId, updated.getUpiId(), key);
+        updateEncryptedField(existing::setPayerEmail, updated.getPayerEmail(), key);
+        updateEncryptedField(existing::setPayerContact, updated.getPayerContact(), key);
+        updateEncryptedField(existing::setPaymentInfo, updated.getPaymentInfo(), key);
+
+        // Non-encrypted razorpay ids/tokens
         if (updated.getPaymentId() != null) existing.setPaymentId(updated.getPaymentId());
         if (updated.getOrderId() != null) existing.setOrderId(updated.getOrderId());
         if (updated.getSignature() != null) existing.setSignature(updated.getSignature());
 
-        // Subscription fields
+        // Subscription updates
         if (updated.getSubscriptionId() != null) existing.setSubscriptionId(updated.getSubscriptionId());
         if (updated.getSubscriptionStatus() != null) existing.setSubscriptionStatus(updated.getSubscriptionStatus());
         if (updated.getMandateId() != null) existing.setMandateId(updated.getMandateId());
         if (updated.getMonthlyAmount() != null) existing.setMonthlyAmount(updated.getMonthlyAmount());
-        if (updated.getPayerEmail() != null) existing.setPayerEmail(updated.getPayerEmail());
-        if (updated.getPayerContact() != null) existing.setPayerContact(updated.getPayerContact());
-        if (updated.getPaymentInfo() != null) existing.setPaymentInfo(updated.getPaymentInfo());
         if (updated.getRazorpayCustomerId() != null) existing.setRazorpayCustomerId(updated.getRazorpayCustomerId());
 
-        // ------------------- ENCRYPTED FIELDS -------------------
+        // Encrypted identity fields
         updateEncryptedField(existing::setEmail, updated.getEmail(), key);
         updateEncryptedField(existing::setMobile, updated.getMobile(), key);
         updateEncryptedField(existing::setUniqueId, updated.getUniqueId(), key);
@@ -505,6 +494,10 @@ public class DonationService {
 
         return donationRepo.save(existing);
     }
+
+    // =====================================================================================
+    // DECRYPT BY ID
+    // =====================================================================================
     public Donourentity findByIdDecrypt(String id) {
         Donourentity d = donationRepo.findById(id).orElse(null);
         if (d == null) return null;
@@ -525,13 +518,9 @@ public class DonationService {
             d.setPayerEmail(safeDecrypt(d.getPayerEmail(), key));
             d.setPayerContact(safeDecrypt(d.getPayerContact(), key));
 
-        } catch (Exception ex) {
-            System.err.println("❌ Decrypt failed: " + ex.getMessage());
-        }
+        } catch (Exception ignored) {}
 
         return d;
     }
-
-
 }
 
