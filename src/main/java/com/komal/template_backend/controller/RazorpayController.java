@@ -717,19 +717,6 @@ public class RazorpayController {
             donor.setReceiptType("SUBSCRIPTION");
             donationRepo.save(donor);
             Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
-
-            byte[] pdf = pdfReceiptService.generateMandateConfirmation(decrypted);
-
-            mailService.sendDonationReceiptWithAttachment(
-                    decrypted.getEmail(),
-                    decrypted.getFirstName() + " " + decrypted.getLastName(),
-                    0.0,
-                    decrypted.getSubscriptionId(),
-                    pdf,
-                    "Mandate_" + decrypted.getSubscriptionId() + ".pdf"
-            );
-
-
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "subscription_id", sub.get("id"),
@@ -747,6 +734,9 @@ public class RazorpayController {
     public ResponseEntity<?> handleWebhook(@RequestBody String payload, @RequestHeader("X-Razorpay-Signature") String signature) {
         try {
             System.out.println("🔔 webhook payload: " + payload);
+            System.out.println("🔔 Webhook event received: " + json.getString("event"));
+System.out.println("🔔 Full payload:\n" + json.toString(2));
+
             if (!Utils.verifyWebhookSignature(payload, signature, webhookSecret)) {
                 System.out.println("❌ invalid webhook signature");
                 return ResponseEntity.status(400).body("Invalid signature");
@@ -776,6 +766,17 @@ public class RazorpayController {
                             LocalDateTime.ofEpochSecond(createdAt, 0, java.time.ZoneOffset.UTC)
                     );
                     donationRepo.save(donor);
+                    Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
+                      byte[] pdf = pdfReceiptService.generateMandateConfirmation(decrypted);
+
+            mailService.sendDonationReceiptWithAttachment(
+                    decrypted.getEmail(),
+                    decrypted.getFirstName() + " " + decrypted.getLastName(),
+                    0.0,
+                    decrypted.getSubscriptionId(),
+                    pdf,
+                    "Mandate_" + decrypted.getSubscriptionId() + ".pdf"
+            );
                 }
             }
             // =========================
@@ -872,6 +873,7 @@ public class RazorpayController {
         }
     }
 }
+
 
 
 
