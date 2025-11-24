@@ -4,6 +4,7 @@
 // import com.komal.template_backend.model.Donourentity;
 // import com.komal.template_backend.service.DonationService;
 // import com.komal.template_backend.service.DonorsFilteration;
+// import org.springframework.http.ResponseEntity;
 // import org.springframework.web.bind.annotation.*;
 
 // import java.util.List;
@@ -41,8 +42,43 @@
 //     public List<Donourentity> filterDonors(@RequestBody Map<String, String> filters) {
 //         return donorsFilteration.filterDonors(filters);
 //     }
+//     @DeleteMapping("/delete/{id}")
+//     public ResponseEntity<?> deleteDonor(@PathVariable String id) {
+//         try {
+//             donationService.deleteById(id);
+//             return ResponseEntity.ok(Map.of(
+//                     "success", true,
+//                     "message", "Donor deleted successfully"
+//             ));
+//         } catch (Exception e) {
+//             return ResponseEntity.status(500).body(Map.of(
+//                     "success", false,
+//                     "message", "Delete failed"
+//             ));
+//         }
+//     }
+
+//     // ------------------------- UPDATE --------------------------------
+//     @PutMapping("/update/{id}")
+//     public ResponseEntity<?> updateDonor(
+//             @PathVariable String id,
+//             @RequestBody Donourentity updated
+//     ) {
+//         try {
+//             Donourentity result = donationService.updateDonor(id, updated);
+//             return ResponseEntity.ok(Map.of(
+//                     "success", true,
+//                     "data", result
+//             ));
+//         } catch (Exception e) {
+//             return ResponseEntity.status(500).body(Map.of(
+//                     "success", false,
+//                     "message", e.getMessage()
+//             ));
+//         }
+//     }
 // }
-// --------------------------------------------------------------------------------------------------------------------
+
 //package com.komal.template_backend.controller;
 //
 //import com.komal.template_backend.model.Donourentity;
@@ -80,8 +116,13 @@
 package com.komal.template_backend.controller;
 
 import com.komal.template_backend.model.Donourentity;
+import com.komal.template_backend.repo.DonationRepo;
 import com.komal.template_backend.service.DonationService;
 import com.komal.template_backend.service.DonorsFilteration;
+import com.komal.template_backend.service.PdfReceiptServic;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -94,11 +135,17 @@ import java.util.Map;
 public class DonationController {
     private final DonationService donationService;
     private final DonorsFilteration donorsFilteration;
+    @Autowired
+    private PdfReceiptServic pdfReceiptService;
 
-    public DonationController(DonationService donationService, DonorsFilteration donationFilterService, DonorsFilteration donorsFilteration) {
+    @Autowired
+    private DonationRepo donationRepo;
+
+    public DonationController(DonationService donationService, DonorsFilteration donorsFilteration) {
         this.donationService = donationService;
         this.donorsFilteration = donorsFilteration;
     }
+
 
     // Save donor record
     @PostMapping("/save")
@@ -131,6 +178,7 @@ public class DonationController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of(
                     "success", false,
+
                     "message", "Delete failed"
             ));
         }
@@ -155,5 +203,46 @@ public class DonationController {
             ));
         }
     }
-}
 
+    @GetMapping("/download/{id}")
+    public ResponseEntity<?> downloadReceipt(@PathVariable String id) {
+        try {
+            Donourentity d = donationService.findByIdDecrypt(id);
+
+            if (d == null) {
+                return ResponseEntity.badRequest().body("Invalid donor ID");
+            }
+
+            byte[] pdf;
+
+            // ONE-TIME PAYMENT
+            if (d.getFrequency().equalsIgnoreCase("onetime")) {
+                pdf = pdfReceiptService.generateOneTimeDonationReceipt(
+                        d,
+                        d.getPaymentId(),
+                        d.getAmount()
+                );
+            }
+            // SUBSCRIPTION MANDATE (first time)
+            else if (d.getSubscriptionId() != null && d.getPaymentId() == null) {
+                pdf = pdfReceiptService.generateMandateConfirmation(d);
+            }
+            // MONTHLY CHARGE
+            else {
+                pdf = pdfReceiptService.generateMonthlyDebitReceipt(
+                        d,
+                        d.getPaymentId(),
+                        d.getAmount()
+                );
+            }
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Receipt_" + d.getId() + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to generate receipt: " + e.getMessage());
+        }
+    }
+}
