@@ -386,18 +386,18 @@ public class DonationService {
         // send receipt if payment already successful
         SecretKeySpec key2 = AESUtil.deobfuscateKey(donor.getEncKey());
 
-        if (donor.getPaymentId() != null) {
-            try {
-                mailService.sendDonationReceipt(
-                        safeDecrypt(donor.getEmail(),key2),
-                        donor.getFirstName() + " " + donor.getLastName(),
-                        donor.getAmount(),
-                        donor.getPaymentId()
-                );
-            } catch (Exception e) {
-                System.err.println("⚠️ Failed to send donation receipt: " + e.getMessage());
-            }
-        }
+        // if (donor.getPaymentId() != null) {
+        //     try {
+        //         mailService.sendDonationReceipt(
+        //                 safeDecrypt(donor.getEmail(),key2),
+        //                 donor.getFirstName() + " " + donor.getLastName(),
+        //                 donor.getAmount(),
+        //                 donor.getPaymentId()
+        //         );
+        //     } catch (Exception e) {
+        //         System.err.println("⚠️ Failed to send donation receipt: " + e.getMessage());
+        //     }
+        // }
         return savedDonor;
     }
     // Safe decryption helper
