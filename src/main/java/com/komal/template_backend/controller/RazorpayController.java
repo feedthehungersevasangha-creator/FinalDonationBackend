@@ -734,8 +734,7 @@ public class RazorpayController {
     public ResponseEntity<?> handleWebhook(@RequestBody String payload, @RequestHeader("X-Razorpay-Signature") String signature) {
         try {
             System.out.println("🔔 webhook payload: " + payload);
-            System.out.println("🔔 Webhook event received: " + json.getString("event"));
-System.out.println("🔔 Full payload:\n" + json.toString(2));
+          
 
             if (!Utils.verifyWebhookSignature(payload, signature, webhookSecret)) {
                 System.out.println("❌ invalid webhook signature");
@@ -744,6 +743,8 @@ System.out.println("🔔 Full payload:\n" + json.toString(2));
             JSONObject json = new JSONObject(payload);
             // handle events as already implemented (subscription.activated, subscription.charged, mandate.authorized)
             String event = json.getString("event");
+              System.out.println("🔔 Webhook event received: " + event);
+System.out.println("🔔 Full payload:\n" + json.toString(2));
 
             // =========================
             // 1️⃣ MANDATE AUTHORIZED
@@ -873,6 +874,7 @@ System.out.println("🔔 Full payload:\n" + json.toString(2));
         }
     }
 }
+
 
 
 
