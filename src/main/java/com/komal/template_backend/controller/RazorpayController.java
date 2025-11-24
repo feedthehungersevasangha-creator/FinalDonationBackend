@@ -1,5 +1,4 @@
 
-  
 
 // package com.komal.template_backend.controller;
 
@@ -40,44 +39,44 @@
 //     DonationService donationService;
 
 
-// @PostMapping("/create-order")
-// public ResponseEntity<?> createOrder(@RequestBody Donourentity donor) {
-//     try {
+//     @PostMapping("/create-order")
+//     public ResponseEntity<?> createOrder(@RequestBody Donourentity donor) {
+//         try {
 
 
-//         // ✅ Create Razorpay Order
-//         RazorpayClient client = new RazorpayClient(keyId, keySecret);
-//         JSONObject options = new JSONObject();
-//         options.put("amount", donor.getAmount() * 100); // paise
-//         options.put("currency", "INR");
-//         options.put("receipt", "receipt_" + System.currentTimeMillis());
-//         options.put("payment_capture", 1);
+//             // ✅ Create Razorpay Order
+//             RazorpayClient client = new RazorpayClient(keyId, keySecret);
+//             JSONObject options = new JSONObject();
+//             options.put("amount", donor.getAmount() * 100); // paise
+//             options.put("currency", "INR");
+//             options.put("receipt", "receipt_" + System.currentTimeMillis());
+//             options.put("payment_capture", 1);
 
-//         Order order = client.orders.create(options);
+//             Order order = client.orders.create(options);
 
-//         // ✅ Attach orderId + set pending
-//         donor.setOrderId(order.get("id"));
-//         donor.setStatus("PENDING");
-//         donor.setDonationDate(LocalDateTime.now());
+//             // ✅ Attach orderId + set pending
+//             donor.setOrderId(order.get("id"));
+//             donor.setStatus("PENDING");
+//             donor.setDonationDate(LocalDateTime.now());
 
-//         // ✅ Save donor details (with encryption inside your service)
-//         donationService.saveDonation(donor);
+//             // ✅ Save donor details (with encryption inside your service)
+//             donationService.saveDonation(donor);
 
-//         // ✅ Send response to frontend
-//         return ResponseEntity.ok(Map.of(
-//                 "success", true,
-//                 "id", order.get("id"),
-//                 "amount", donor.getAmount() * 100,
-//                 "currency", "INR",
-//                 "keyId", keyId,
-//                 "message", "Order created successfully"
-//         ));
-//     } catch (Exception e) {
-//         e.printStackTrace();
-//         return ResponseEntity.status(500)
-//                 .body(Map.of("success", false, "message", "Server error: " + e.getMessage()));
+//             // ✅ Send response to frontend
+//             return ResponseEntity.ok(Map.of(
+//                     "success", true,
+//                     "id", order.get("id"),
+//                     "amount", donor.getAmount() * 100,
+//                     "currency", "INR",
+//                     "keyId", keyId,
+//                     "message", "Order created successfully"
+//             ));
+//         } catch (Exception e) {
+//             e.printStackTrace();
+//             return ResponseEntity.status(500)
+//                     .body(Map.of("success", false, "message", "Server error: " + e.getMessage()));
+//         }
 //     }
-// }
 //     @Autowired
 //     private DonationRepo donationRepo;
 
@@ -115,19 +114,26 @@
 //                         "message", "Invalid signature"
 //                 ));
 //             }
-
 //             // ✅ Fetch Razorpay Payment Details
 //             RazorpayClient client = new RazorpayClient(keyId, keySecret);
 //             com.razorpay.Payment payment = client.payments.fetch(razorpayPaymentId);
 //             JSONObject paymentJson = payment.toJson();
-
 //             String status = paymentJson.getString("status"); // captured, failed, refunded
 //             String method = paymentJson.optString("method", "UNKNOWN");
 //             String bank = paymentJson.optString("bank", "");
 //             String vpa = paymentJson.optString("vpa", "");
 //             int amount = paymentJson.getInt("amount"); // in paise
 //             String currency = paymentJson.getString("currency");
+//             String payerEmail = paymentJson.optString("email", "");
+//             String payerContact = paymentJson.optString("contact", "");
+//             // wallet may be present in some gateways; try to fetch safely
+//             String wallet = paymentJson.optString("wallet", "");
 
+//             // human-friendly paymentInfo: prefer vpa then bank then method
+//             String paymentInfo = "";
+//             if (!vpa.isEmpty()) paymentInfo = vpa;
+//             else if (!bank.isEmpty()) paymentInfo = bank;
+//             else paymentInfo = method;
 //             // ✅ Update Donor record
 //             Optional<Donourentity> donorOpt = donationRepo.findByOrderId(razorpayOrderId);
 //             if (donorOpt.isPresent()) {
@@ -135,9 +141,16 @@
 //                 donor.setPaymentId(razorpayPaymentId);
 //                 donor.setSignature(razorpaySignature);
 //                 donor.setStatus(status.equalsIgnoreCase("captured") ? "SUCCESS" : status.toUpperCase());
-//                 donor.setPaymentMethod(method);
-//                 donor.setBankName(bank.isEmpty() ? vpa : bank);
-//                 donor.setAmount(amount / 100.0); // Convert paise to rupees
+
+//                 donor.setPaymentMethod(method);     // store RAW payment method
+//                 donor.setUpiId(vpa);                // store UPI ID
+//                 donor.setWallet(wallet);            // store wallet (if exists)
+//                 donor.setPaymentInfo(bank.isEmpty() ? vpa : bank);
+
+//                 donor.setPayerEmail(payerEmail);
+//                 donor.setPayerContact(payerContact);
+
+//                 donor.setAmount(amount / 100.0);
 //                 donor.setDonationDate(LocalDateTime.now());
 
 //                 donationService.saveDonation(donor);
@@ -195,11 +208,11 @@
 //         try {
 //             String donorId = (String) req.get("donorId");
 //             int amountRupees = Integer.parseInt(String.valueOf(req.get("amount"))); // must be integer rupees
-// System.out.println("🔍 DEBUG keyId = " + keyId);
-// System.out.println("🔍 DEBUG keySecret = " + keySecret);
-// System.out.println("🔍 DEBUG keyId length = " + (keyId != null ? keyId.length() : 0));
-// System.out.println("🔍 DEBUG keySecret length = " + (keySecret != null ? keySecret.length() : 0));
-// System.out.println("🔍 DEBUG variablePlanId = " + variablePlanId);
+//             System.out.println("🔍 DEBUG keyId = " + keyId);
+//             System.out.println("🔍 DEBUG keySecret = " + keySecret);
+//             System.out.println("🔍 DEBUG keyId length = " + (keyId != null ? keyId.length() : 0));
+//             System.out.println("🔍 DEBUG keySecret length = " + (keySecret != null ? keySecret.length() : 0));
+//             System.out.println("🔍 DEBUG variablePlanId = " + variablePlanId);
 
 //             System.out.println("🔵 create-subscription called: donorId=" + donorId + " amount=" + amountRupees);
 //             System.out.println("🔵 Using plan_id=" + variablePlanId + " key=" + keyId);
@@ -237,6 +250,8 @@
 
 //             donor.setSubscriptionId(sub.get("id"));
 //             donor.setSubscriptionStatus("CREATED");
+//             donor.setMonthlyAmount((double) amountRupees);
+//             donor.setReceiptType("SUBSCRIPTION");
 //             donationRepo.save(donor);
 
 //             return ResponseEntity.ok(Map.of(
@@ -261,6 +276,104 @@
 //             }
 //             JSONObject json = new JSONObject(payload);
 //             // handle events as already implemented (subscription.activated, subscription.charged, mandate.authorized)
+//             String event = json.getString("event");
+
+//             // =========================
+//             // 1️⃣ MANDATE AUTHORIZED
+//             // =========================
+//             if (event.equals("mandate.authorized")) {
+//                 JSONObject mandate = json.getJSONObject("payload")
+//                         .getJSONObject("mandate")
+//                         .getJSONObject("entity");
+
+//                 String subscriptionId = mandate.getString("subscription_id");
+//                 String mandateId = mandate.getString("id");
+//                 long createdAt = mandate.getLong("created_at");
+
+//                 Donourentity donor = donationRepo.findBySubscriptionId(subscriptionId)
+//                         .orElse(null);
+
+//                 if (donor != null) {
+//                     donor.setRazorpayMandateId(mandateId);
+//                     donor.setMandateStatus("AUTHORIZED");
+//                     donor.setMandateStartDate(
+//                             LocalDateTime.ofEpochSecond(createdAt, 0, java.time.ZoneOffset.UTC)
+//                     );
+
+//                     donationRepo.save(donor);
+//                 }
+//             }
+
+//             // =========================
+//             // 2️⃣ SUBSCRIPTION ACTIVATED
+//             // =========================
+//             if (event.equals("subscription.activated")) {
+//                 JSONObject sub = json.getJSONObject("payload")
+//                         .getJSONObject("subscription")
+//                         .getJSONObject("entity");
+
+//                 String subscriptionId = sub.getString("id");
+//                 String customerId = sub.optString("customer_id", "");
+
+//                 Donourentity donor = donationRepo.findBySubscriptionId(subscriptionId)
+//                         .orElse(null);
+
+//                 if (donor != null) {
+//                     donor.setSubscriptionStatus("ACTIVE");
+//                     donor.setRazorpayCustomerId(customerId);
+//                     donationRepo.save(donor);
+//                 }
+//             }
+
+//             // =========================
+//             // 3️⃣ SUBSCRIPTION CHARGED (MONTHLY PAYMENT)
+//             // =========================
+//             if (event.equals("subscription.charged")) {
+
+//                 JSONObject payment = json.getJSONObject("payload")
+//                         .getJSONObject("payment")
+//                         .getJSONObject("entity");
+
+//                 String subscriptionId = payment.getString("subscription_id");
+//                 String paymentId = payment.getString("id");
+//                 String method = payment.optString("method", "");
+//                 double amount = payment.getInt("amount") / 100.0;
+
+//                 String vpa = payment.optString("vpa", "");
+//                 String bank = payment.optString("bank", "");
+//                 String payerEmail = payment.optString("email", "");
+//                 String payerContact = payment.optString("contact", "");
+//                 String wallet = payment.optString("wallet", "");
+
+//                 String paymentInfo = (!vpa.isEmpty()) ? vpa : (!bank.isEmpty() ? bank : method);
+
+
+//                 Donourentity original = donationRepo.findBySubscriptionId(subscriptionId).orElse(null);
+//                 if (original != null) {
+
+//                     // Each month create a NEW donation entry
+//                     Donourentity monthly = new Donourentity();
+//                     monthly.setFirstName(original.getFirstName());
+//                     monthly.setLastName(original.getLastName());
+//                     monthly.setMonthlyAmount(original.getMonthlyAmount());
+//                     monthly.setReceiptType("SUBSCRIPTION");
+//                     monthly.setSubscriptionId(subscriptionId);
+//                     monthly.setSubscriptionStatus("ACTIVE");
+
+//                     monthly.setPaymentId(paymentId);
+//                     monthly.setPaymentMethod(method);
+//                     monthly.setPaymentInfo(paymentInfo);
+//                     monthly.setPayerEmail(payerEmail);
+//                     monthly.setPayerContact(payerContact);
+//                     monthly.setUpiId(vpa);
+//                     monthly.setWallet(wallet);
+//                     monthly.setAmount(amount);
+//                     monthly.setStatus("SUCCESS");
+//                     monthly.setDonationDate(LocalDateTime.now());
+
+//                     donationService.saveDonation(monthly);
+//                 }
+//             }
 //             return ResponseEntity.ok("OK");
 //         } catch (Exception e) {
 //             e.printStackTrace();
@@ -276,6 +389,8 @@ package com.komal.template_backend.controller;
 import com.komal.template_backend.model.Donourentity;
 import com.komal.template_backend.repo.DonationRepo;
 import com.komal.template_backend.service.DonationService;
+import com.komal.template_backend.service.MailService;
+import com.komal.template_backend.service.PdfReceiptServic;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import com.razorpay.Subscription;
@@ -309,12 +424,14 @@ public class RazorpayController {
     @Autowired
     DonationService donationService;
 
+    @Autowired
+    private PdfReceiptServic pdfReceiptService;
+    @Autowired
+    private MailService mailService;
 
     @PostMapping("/create-order")
     public ResponseEntity<?> createOrder(@RequestBody Donourentity donor) {
         try {
-
-
             // ✅ Create Razorpay Order
             RazorpayClient client = new RazorpayClient(keyId, keySecret);
             JSONObject options = new JSONObject();
@@ -322,7 +439,6 @@ public class RazorpayController {
             options.put("currency", "INR");
             options.put("receipt", "receipt_" + System.currentTimeMillis());
             options.put("payment_capture", 1);
-
             Order order = client.orders.create(options);
 
             // ✅ Attach orderId + set pending
@@ -331,12 +447,16 @@ public class RazorpayController {
             donor.setDonationDate(LocalDateTime.now());
 
             // ✅ Save donor details (with encryption inside your service)
-            donationService.saveDonation(donor);
+            Donourentity saved = donationService.saveDonation(donor);
 
-            // ✅ Send response to frontend
+            // IMPORTANT: do NOT send receipt here — paymentId will be null at this stage.
+            // Email will be sent after verification in /verify so receipt contains correct paymentId.
+
+            // ✅ Send response to frontend (includes donorId so frontend can use it)
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "id", order.get("id"),
+                    "donorId", saved.getId(),
                     "amount", donor.getAmount() * 100,
                     "currency", "INR",
                     "keyId", keyId,
@@ -348,6 +468,7 @@ public class RazorpayController {
                     .body(Map.of("success", false, "message", "Server error: " + e.getMessage()));
         }
     }
+
     @Autowired
     private DonationRepo donationRepo;
 
@@ -385,19 +506,23 @@ public class RazorpayController {
                         "message", "Invalid signature"
                 ));
             }
-            // ✅ Fetch Razorpay Payment Details
+
+            // ✅ Fetch Razorpay Payment Details (for debugging and authoritative data)
             RazorpayClient client = new RazorpayClient(keyId, keySecret);
             com.razorpay.Payment payment = client.payments.fetch(razorpayPaymentId);
             JSONObject paymentJson = payment.toJson();
-            String status = paymentJson.getString("status"); // captured, failed, refunded
+
+            // --- Debug output: full payment JSON from Razorpay
+            System.out.println("🔍 Razorpay payment JSON: " + paymentJson.toString(2));
+
+            String status = paymentJson.optString("status", "UNKNOWN"); // captured, failed, refunded
             String method = paymentJson.optString("method", "UNKNOWN");
             String bank = paymentJson.optString("bank", "");
             String vpa = paymentJson.optString("vpa", "");
-            int amount = paymentJson.getInt("amount"); // in paise
-            String currency = paymentJson.getString("currency");
+            int amount = paymentJson.optInt("amount", 0); // in paise
+            String currency = paymentJson.optString("currency", "");
             String payerEmail = paymentJson.optString("email", "");
             String payerContact = paymentJson.optString("contact", "");
-            // wallet may be present in some gateways; try to fetch safely
             String wallet = paymentJson.optString("wallet", "");
 
             // human-friendly paymentInfo: prefer vpa then bank then method
@@ -405,10 +530,17 @@ public class RazorpayController {
             if (!vpa.isEmpty()) paymentInfo = vpa;
             else if (!bank.isEmpty()) paymentInfo = bank;
             else paymentInfo = method;
+
             // ✅ Update Donor record
             Optional<Donourentity> donorOpt = donationRepo.findByOrderId(razorpayOrderId);
             if (donorOpt.isPresent()) {
                 Donourentity donor = donorOpt.get();
+
+                // --- Debug: donor before update (show limited info to avoid logging sensitive fields)
+                System.out.println("🔍 Donor before update (id=" + donor.getId() + "): paymentId="
+                        + donor.getPaymentId() + ", subscriptionId=" + donor.getSubscriptionId()
+                        + ", orderId=" + donor.getOrderId());
+
                 donor.setPaymentId(razorpayPaymentId);
                 donor.setSignature(razorpaySignature);
                 donor.setStatus(status.equalsIgnoreCase("captured") ? "SUCCESS" : status.toUpperCase());
@@ -424,11 +556,68 @@ public class RazorpayController {
                 donor.setAmount(amount / 100.0);
                 donor.setDonationDate(LocalDateTime.now());
 
-                donationService.saveDonation(donor);
+                // Save the updated donor (donationService.saveDonation handles existing-case re-encryption)
+                Donourentity saved = donationService.saveDonation(donor);
+
+                // --- Debug: donor after update
+                System.out.println("🔍 Donor after update (id=" + saved.getId() + "): paymentId="
+                        + saved.getPaymentId() + ", subscriptionId=" + saved.getSubscriptionId()
+                        + ", status=" + saved.getStatus() + ", amount=" + saved.getAmount());
+
+                // ⭐ Send email receipt now that payment is verified and paymentId is present
+                try {
+                    Donourentity decrypted = donationService.findByIdDecrypt(saved.getId());
+                    if (decrypted != null) {
+                        // Choose correct receipt type and generate appropriate PDF
+                        byte[] pdf;
+                        if ("onetime".equalsIgnoreCase(decrypted.getFrequency())) {
+                            pdf = pdfReceiptService.generateOneTimeDonationReceipt(
+                                    decrypted,
+                                    decrypted.getPaymentId(),
+                                    decrypted.getAmount()
+                            );
+                        } else if (decrypted.getSubscriptionId() != null && decrypted.getPaymentId() == null) {
+                            // Mandate confirmation (subscription created but no payment yet)
+                            pdf = pdfReceiptService.generateMandateConfirmation(decrypted);
+                        } else {
+                            // Monthly debit / subscription payment
+                            pdf = pdfReceiptService.generateMonthlyDebitReceipt(
+                                    decrypted,
+                                    decrypted.getPaymentId(),
+                                    decrypted.getAmount()
+                            );
+                        }
+
+                        // Email only if we have recipient email
+                        String recipient = (decrypted.getPayerEmail() != null && !decrypted.getPayerEmail().isBlank())
+                                ? decrypted.getPayerEmail() : decrypted.getEmail();
+
+                        if (recipient != null && !recipient.isBlank()) {
+                            mailService.sendDonationReceiptWithAttachment(
+                                    recipient,
+                                    decrypted.getFirstName() + " " + decrypted.getLastName(),
+                                    decrypted.getAmount(),
+                                    decrypted.getPaymentId(),
+                                    pdf,
+                                    "DonationReceipt_" + (decrypted.getPaymentId() != null ? decrypted.getPaymentId() : decrypted.getId()) + ".pdf"
+                            );
+                            System.out.println("📧 Email receipt queued/sent to " + recipient);
+                        } else {
+                            System.err.println("⚠️ No recipient email available; skipping email send.");
+                        }
+                    } else {
+                        System.err.println("⚠️ Decrypted donor returned null; skipping email send.");
+                    }
+                } catch (Exception e) {
+                    System.err.println("⚠️ Failed to generate/send PDF email after verification: " + e.getMessage());
+                    e.printStackTrace();
+                }
+
                 System.out.println("✅ Donor updated successfully");
             } else {
                 System.err.println("⚠️ Donor not found for orderId: " + razorpayOrderId);
             }
+
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "status", status,
@@ -444,6 +633,7 @@ public class RazorpayController {
             ));
         }
     }
+
     private String hmacSha256(String data, String secret) throws Exception {
         Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
         SecretKeySpec secret_key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
@@ -459,6 +649,7 @@ public class RazorpayController {
         }
         return hexString.toString();
     }
+
     @PostMapping("/create-donor-record")
     public ResponseEntity<?> createDonorRecord(@RequestBody Donourentity donor) {
         try {
@@ -474,6 +665,7 @@ public class RazorpayController {
         }
 
     }
+
     @PostMapping("/create-subscription")
     public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
         try {
@@ -524,11 +716,25 @@ public class RazorpayController {
             donor.setMonthlyAmount((double) amountRupees);
             donor.setReceiptType("SUBSCRIPTION");
             donationRepo.save(donor);
+            Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
+
+            byte[] pdf = pdfReceiptService.generateMandateConfirmation(decrypted);
+
+            mailService.sendDonationReceiptWithAttachment(
+                    decrypted.getEmail(),
+                    decrypted.getFirstName() + " " + decrypted.getLastName(),
+                    0.0,
+                    decrypted.getSubscriptionId(),
+                    pdf,
+                    "Mandate_" + decrypted.getSubscriptionId() + ".pdf"
+            );
+
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "subscription_id", sub.get("id"),
                     "keyId", keyId,
+                    "donorId", donor.getId(),
                     "short_url", sub.toJson().optString("short_url")
             ));
         } catch (Exception e) {
@@ -563,18 +769,15 @@ public class RazorpayController {
 
                 Donourentity donor = donationRepo.findBySubscriptionId(subscriptionId)
                         .orElse(null);
-
                 if (donor != null) {
                     donor.setRazorpayMandateId(mandateId);
                     donor.setMandateStatus("AUTHORIZED");
                     donor.setMandateStartDate(
                             LocalDateTime.ofEpochSecond(createdAt, 0, java.time.ZoneOffset.UTC)
                     );
-
                     donationRepo.save(donor);
                 }
             }
-
             // =========================
             // 2️⃣ SUBSCRIPTION ACTIVATED
             // =========================
@@ -630,7 +833,7 @@ public class RazorpayController {
                     monthly.setReceiptType("SUBSCRIPTION");
                     monthly.setSubscriptionId(subscriptionId);
                     monthly.setSubscriptionStatus("ACTIVE");
-
+                    monthly.setStatus( "SUCCESS");
                     monthly.setPaymentId(paymentId);
                     monthly.setPaymentMethod(method);
                     monthly.setPaymentInfo(paymentInfo);
@@ -643,6 +846,23 @@ public class RazorpayController {
                     monthly.setDonationDate(LocalDateTime.now());
 
                     donationService.saveDonation(monthly);
+                    Donourentity decrypted = donationService.findByIdDecrypt(monthly.getId());
+
+                    byte[] pdf = pdfReceiptService.generateMonthlyDebitReceipt(
+                            decrypted,
+                            decrypted.getPaymentId(),
+                            decrypted.getAmount()
+                    );
+
+                    mailService.sendDonationReceiptWithAttachment(
+                            decrypted.getPayerEmail() != null ? decrypted.getPayerEmail() : decrypted.getEmail(),
+                            decrypted.getFirstName() + " " + decrypted.getLastName(),
+                            decrypted.getAmount(),
+                            decrypted.getPaymentId(),
+                            pdf,
+                            "MonthlyReceipt_" + decrypted.getPaymentId() + ".pdf"
+                    );
+
                 }
             }
             return ResponseEntity.ok("OK");
@@ -651,8 +871,6 @@ public class RazorpayController {
             return ResponseEntity.status(500).body("Webhook error");
         }
     }
-
-
 }
 
 
