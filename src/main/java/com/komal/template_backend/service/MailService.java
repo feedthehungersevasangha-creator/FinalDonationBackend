@@ -52,18 +52,18 @@
 //         message.setTo(toEmail);
 //         message.setSubject("Thank You for Your Donation ❤️");
 
-//         String body = String.format(
-//                 "Dear %s,\n\nThank you for your generous donation to Feed The Hunger Foundation!\n\n" +
-//                         "Donation Details:\n" +
-//                         "--------------------------------\n" +
-//                         "Amount: ₹%.2f\n" +
-//                         "Payment ID: %s\n" +
-//                         "Date: %s\n" +
-//                         "--------------------------------\n\n" +
-//                         "Your support helps us feed more families in need.\n\n" +
-//                         "With gratitude,\nFeed The Hunger Foundation",
-//                 donorName, amount, paymentId, java.time.LocalDateTime.now()
-//         );
+        // String body = String.format(
+        //         "Dear %s,\n\nThank you for your generous donation to Feed The Hunger Foundation!\n\n" +
+        //                 "Donation Details:\n" +
+        //                 "--------------------------------\n" +
+        //                 "Amount: ₹%.2f\n" +
+        //                 "Payment ID: %s\n" +
+        //                 "Date: %s\n" +
+        //                 "--------------------------------\n\n" +
+        //                 "Your support helps us feed more families in need.\n\n" +
+        //                 "With gratitude,\nFeed The Hunger Foundation",
+        //         donorName, amount, paymentId, java.time.LocalDateTime.now()
+        // );
 
 //         message.setText(body);
 //         mailSender.send(message);
@@ -152,7 +152,19 @@ public class MailService {
             MimeMessageHelper helper = new MimeMessageHelper(msg, true);
             helper.setTo(email);
             helper.setSubject("Donation Receipt - " + paymentId);
-            helper.setText("Thanks " + name + ". Please find attached receipt.", false);
+            String body = String.format(
+                "Dear %s,\n\nThank you for your generous donation to Feed The Hunger Foundation!\n\n" +
+                        "Donation Details:\n" +
+                        "--------------------------------\n" +
+                        "Amount: ₹%.2f\n" +
+                        "Payment ID: %s\n" +
+                        "Date: %s\n" +
+                        "--------------------------------\n\n" +
+                        "Your support helps us feed more families in need.\n\n" +
+                        "With gratitude,\nFeed The Hunger Foundation",
+                name, amount, paymentId, java.time.LocalDateTime.now()
+        );
+            helper.setText(body);
             helper.addAttachment(filename, new ByteArrayResource(pdfBytes));
             javaMailSender.send(msg);
         } catch (Exception e) {
