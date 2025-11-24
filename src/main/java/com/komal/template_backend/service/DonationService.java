@@ -351,16 +351,7 @@ public class DonationService {
             Donourentity updated = donationRepo.save(existing);
 
             // send mail after successful payment
-            try {
-                mailService.sendDonationReceipt(
-                        safeDecrypt(donor.getEmail(),key),
-                        existing.getFirstName() + " " + existing.getLastName(),
-                        existing.getAmount(),
-                        donor.getPaymentId()
-                );
-            } catch (Exception e) {
-                System.err.println("⚠️ Failed to send donation receipt: " + e.getMessage());
-            }
+           
 
             return updated;
         }
