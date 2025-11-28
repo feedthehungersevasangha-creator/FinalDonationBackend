@@ -767,7 +767,7 @@ public class RazorpayController {
         }
         return hexString.toString();
     }
-@PostMapping("/create-variable-plan")
+@GetMapping("/create-variable-plan")
 public ResponseEntity<?> createVariablePlan() {
     try {
         RazorpayClient client = new RazorpayClient(keyId, keySecret);
@@ -1330,6 +1330,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
 }
 
 }
+
 
 
 
