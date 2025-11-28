@@ -320,116 +320,223 @@ public class DonationService {
     // =====================================================================================
     // SAVE DONATION (for create-order, verify, subscription-charged, mandate-authorized)
     // =====================================================================================
-    public Donourentity saveDonation(Donourentity donor) throws Exception {
+//     public Donourentity saveDonation(Donourentity donor) throws Exception {
 
-        // Always save in IST
-        if (donor.getDonationDate() == null) {
-            donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-        }
+//         // Always save in IST
+//         if (donor.getDonationDate() == null) {
+//             donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+//         }
 
-        // Only search if orderId is present
-        Donourentity existing = null;
-        if (donor.getOrderId() != null) {
-            existing = donationRepo.findByOrderId(donor.getOrderId()).orElse(null);
-        }
+//         // Only search if orderId is present
+//         Donourentity existing = null;
+//         if (donor.getOrderId() != null) {
+//             existing = donationRepo.findByOrderId(donor.getOrderId()).orElse(null);
+//         }
 
-        // ===========================================
-        // UPDATE EXISTING (VERIFY / WEBHOOK)
-        // ===========================================
-        if (existing != null) {
+//         // ===========================================
+//         // UPDATE EXISTING (VERIFY / WEBHOOK)
+//         // ===========================================
+//         if (existing != null) {
 
-            System.out.println("🟡 Updating existing donor - encryption preserved");
+//             System.out.println("🟡 Updating existing donor - encryption preserved");
 
-            SecretKeySpec key = AESUtil.deobfuscateKey(existing.getEncKey());
+//             SecretKeySpec key = AESUtil.deobfuscateKey(existing.getEncKey());
 
-            existing.setPaymentId(donor.getPaymentId());
-            existing.setSignature(donor.getSignature());
-            existing.setStatus(donor.getPaymentId() != null ? "SUCCESS" : "PENDING");
+//             existing.setPaymentId(donor.getPaymentId());
+//             existing.setSignature(donor.getSignature());
+//             existing.setStatus(donor.getPaymentId() != null ? "SUCCESS" : "PENDING");
 
-            // Subscription / mandate extra fields
-            if (donor.getSubscriptionId() != null) existing.setSubscriptionId(donor.getSubscriptionId());
-            if (donor.getSubscriptionStatus() != null) existing.setSubscriptionStatus(donor.getSubscriptionStatus());
-            if (donor.getRazorpayMandateId() != null) existing.setRazorpayMandateId(donor.getRazorpayMandateId());
-            if (donor.getMandateStartDate() != null) existing.setMandateStartDate(donor.getMandateStartDate());
-            if (donor.getMandateEndDate() != null) existing.setMandateEndDate(donor.getMandateEndDate());
-            if (donor.getMandateStatus() != null) existing.setMandateStatus(donor.getMandateStatus());
-            if (donor.getMandateAmount() != null) existing.setMandateAmount(donor.getMandateAmount());
-            if (donor.getMandateFrequency() != null) existing.setMandateFrequency(donor.getMandateFrequency());
-            if (donor.getMonthlyAmount() != null) existing.setMonthlyAmount(donor.getMonthlyAmount());
-            if (donor.getDonorMandateRefId() != null) existing.setDonorMandateRefId(donor.getDonorMandateRefId());
+//             // Subscription / mandate extra fields
+//             if (donor.getSubscriptionId() != null) existing.setSubscriptionId(donor.getSubscriptionId());
+//             if (donor.getSubscriptionStatus() != null) existing.setSubscriptionStatus(donor.getSubscriptionStatus());
+//             if (donor.getRazorpayMandateId() != null) existing.setRazorpayMandateId(donor.getRazorpayMandateId());
+//             if (donor.getMandateStartDate() != null) existing.setMandateStartDate(donor.getMandateStartDate());
+//             if (donor.getMandateEndDate() != null) existing.setMandateEndDate(donor.getMandateEndDate());
+//             if (donor.getMandateStatus() != null) existing.setMandateStatus(donor.getMandateStatus());
+//             if (donor.getMandateAmount() != null) existing.setMandateAmount(donor.getMandateAmount());
+//             if (donor.getMandateFrequency() != null) existing.setMandateFrequency(donor.getMandateFrequency());
+//             if (donor.getMonthlyAmount() != null) existing.setMonthlyAmount(donor.getMonthlyAmount());
+//             if (donor.getDonorMandateRefId() != null) existing.setDonorMandateRefId(donor.getDonorMandateRefId());
 
-            // Encrypted Razorpay fields
-            if (donor.getPaymentMethod() != null)
-                existing.setPaymentMethod(AESUtil.encryptIfNotNull(donor.getPaymentMethod(), key));
+//             // Encrypted Razorpay fields
+//             if (donor.getPaymentMethod() != null)
+//                 existing.setPaymentMethod(AESUtil.encryptIfNotNull(donor.getPaymentMethod(), key));
 
-            if (donor.getWallet() != null)
-                existing.setWallet(AESUtil.encryptIfNotNull(donor.getWallet(), key));
+//             if (donor.getWallet() != null)
+//                 existing.setWallet(AESUtil.encryptIfNotNull(donor.getWallet(), key));
 
-            if (donor.getUpiId() != null)
-                existing.setUpiId(AESUtil.encryptIfNotNull(donor.getUpiId(), key));
+//             if (donor.getUpiId() != null)
+//                 existing.setUpiId(AESUtil.encryptIfNotNull(donor.getUpiId(), key));
 
-            if (donor.getPayerEmail() != null)
-                existing.setPayerEmail(AESUtil.encryptIfNotNull(donor.getPayerEmail(), key));
+//             if (donor.getPayerEmail() != null)
+//                 existing.setPayerEmail(AESUtil.encryptIfNotNull(donor.getPayerEmail(), key));
 
-            if (donor.getPayerContact() != null)
-                existing.setPayerContact(AESUtil.encryptIfNotNull(donor.getPayerContact(), key));
+//             if (donor.getPayerContact() != null)
+//                 existing.setPayerContact(AESUtil.encryptIfNotNull(donor.getPayerContact(), key));
 
-            if (donor.getPaymentInfo() != null)
-                existing.setPaymentInfo(AESUtil.encryptIfNotNull(donor.getPaymentInfo(), key));
+//             if (donor.getPaymentInfo() != null)
+//                 existing.setPaymentInfo(AESUtil.encryptIfNotNull(donor.getPaymentInfo(), key));
 
-            return donationRepo.save(existing);
-        }
+//             return donationRepo.save(existing);
+//         }
 
-        // ===========================================
-        // NEW DONOR (ENCRYPT EVERYTHING)
-        // ===========================================
-        System.out.println("🟢 New donor — performing encryption");
+//         // ===========================================
+//         // NEW DONOR (ENCRYPT EVERYTHING)
+//         // ===========================================
+//         System.out.println("🟢 New donor — performing encryption");
 
-        String salt = AESUtil.generateSalt();
-        donor.setEncSalt(salt);
-        donor.setEncMonth(donor.getDonationDate().getMonthValue());
-donor.setStartDay(donor.getStartDay());
+//         String salt = AESUtil.generateSalt();
+//         donor.setEncSalt(salt);
+//         donor.setEncMonth(donor.getDonationDate().getMonthValue());
+// donor.setStartDay(donor.getStartDay());
 
-        // Generate key using identity + date + salt
-        SecretKeySpec key = AESUtil.generateKey(
-                donor.getMobile() != null ? donor.getMobile() : "",
-                donor.getUniqueId() != null ? donor.getUniqueId() : "",
-                donor.getDob() != null ? donor.getDob() : "",
-                donor.getDonationDate(),
-                salt
+//         // Generate key using identity + date + salt
+//         SecretKeySpec key = AESUtil.generateKey(
+//                 donor.getMobile() != null ? donor.getMobile() : "",
+//                 donor.getUniqueId() != null ? donor.getUniqueId() : "",
+//                 donor.getDob() != null ? donor.getDob() : "",
+//                 donor.getDonationDate(),
+//                 salt
+//         );
+
+//         donor.setEncKey(AESUtil.obfuscateKey(key));
+
+//         // Encrypt sensitive fields
+//         donor.setEmail(AESUtil.encryptIfNotNull(donor.getEmail(), key));
+//         donor.setMobile(AESUtil.encryptIfNotNull(donor.getMobile(), key));
+//         donor.setUniqueId(AESUtil.encryptIfNotNull(donor.getUniqueId(), key));
+//         // donor.setBankName(AESUtil.encryptIfNotNull(donor.getBankName(), key));
+//         // donor.setIfsc(AESUtil.encryptIfNotNull(donor.getIfsc(), key));
+//         // donor.setAccountNumber(AESUtil.encryptIfNotNull(donor.getAccountNumber(), key));
+
+//         donor.setStatus(donor.getPaymentId() != null ? "SUCCESS" : "PENDING");
+//                // 🔥 Auto-generate receipt only after successful payment
+// if ("SUCCESS".equalsIgnoreCase(existing.getStatus())) {
+
+//     // Set receipt type
+//     if (existing.getSubscriptionId() != null) {
+//         existing.setReceiptType("SUBSCRIPTION");
+//     } else {
+//         existing.setReceiptType("ONE_TIME");
+//     }
+
+//     // Generate receipt number only if empty (avoid overriding)
+//     if (existing.getInvoiceNumber() == null || existing.getInvoiceNumber().isBlank()) {
+//         String receipt = generateReceiptNumber(existing);
+//         existing.setInvoiceNumber(receipt);
+//     }
+// }
+
+
+//         return donationRepo.save(donor);
+//     }
+public Donourentity saveDonation(Donourentity donor) throws Exception {
+
+    // Always IST
+    if (donor.getDonationDate() == null) {
+        donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+    }
+
+    Donourentity existing = null;
+
+    // Update only when orderId exists (one-time payments)
+    if (donor.getOrderId() != null) {
+        existing = donationRepo.findByOrderId(donor.getOrderId()).orElse(null);
+    }
+
+    // =====================================================================================
+    // UPDATE EXISTING RECORD (ONE-TIME PAYMENT)
+    // =====================================================================================
+    if (existing != null) {
+
+        SecretKeySpec key = AESUtil.deobfuscateKey(existing.getEncKey());
+
+        existing.setPaymentId(donor.getPaymentId());
+        existing.setSignature(donor.getSignature());
+        existing.setStatus(
+                donor.getPaymentId() != null ? "SUCCESS" : "PENDING"
         );
 
-        donor.setEncKey(AESUtil.obfuscateKey(key));
+        // Razorpay subscription fields
+        if (donor.getSubscriptionId() != null) existing.setSubscriptionId(donor.getSubscriptionId());
+        if (donor.getSubscriptionStatus() != null) existing.setSubscriptionStatus(donor.getSubscriptionStatus());
+        if (donor.getMandateStartDate() != null) existing.setMandateStartDate(donor.getMandateStartDate());
+        if (donor.getMandateEndDate() != null) existing.setMandateEndDate(donor.getMandateEndDate());
 
-        // Encrypt sensitive fields
-        donor.setEmail(AESUtil.encryptIfNotNull(donor.getEmail(), key));
-        donor.setMobile(AESUtil.encryptIfNotNull(donor.getMobile(), key));
-        donor.setUniqueId(AESUtil.encryptIfNotNull(donor.getUniqueId(), key));
-        // donor.setBankName(AESUtil.encryptIfNotNull(donor.getBankName(), key));
-        // donor.setIfsc(AESUtil.encryptIfNotNull(donor.getIfsc(), key));
-        // donor.setAccountNumber(AESUtil.encryptIfNotNull(donor.getAccountNumber(), key));
+        // Encrypted fields
+        if (donor.getPaymentMethod() != null)
+            existing.setPaymentMethod(AESUtil.encryptIfNotNull(donor.getPaymentMethod(), key));
 
-        donor.setStatus(donor.getPaymentId() != null ? "SUCCESS" : "PENDING");
-               // 🔥 Auto-generate receipt only after successful payment
-if ("SUCCESS".equalsIgnoreCase(existing.getStatus())) {
+        if (donor.getPayerEmail() != null)
+            existing.setPayerEmail(AESUtil.encryptIfNotNull(donor.getPayerEmail(), key));
 
-    // Set receipt type
-    if (existing.getSubscriptionId() != null) {
-        existing.setReceiptType("SUBSCRIPTION");
-    } else {
-        existing.setReceiptType("ONE_TIME");
+        if (donor.getPayerContact() != null)
+            existing.setPayerContact(AESUtil.encryptIfNotNull(donor.getPayerContact(), key));
+
+        if (donor.getPaymentInfo() != null)
+            existing.setPaymentInfo(AESUtil.encryptIfNotNull(donor.getPaymentInfo(), key));
+
+        // ⭐ GENERATE RECEIPT NUMBER WHEN SUCCESSFUL PAYMENT
+        if ("SUCCESS".equalsIgnoreCase(existing.getStatus()) &&
+                (existing.getInvoiceNumber() == null || existing.getInvoiceNumber().isBlank())) {
+
+            String receipt = generateReceiptNumber(existing);
+            existing.setInvoiceNumber(receipt);
+
+            if (existing.getSubscriptionId() != null)
+                existing.setReceiptType("SUBSCRIPTION");
+            else
+                existing.setReceiptType("ONE_TIME");
+        }
+
+        return donationRepo.save(existing);
     }
 
-    // Generate receipt number only if empty (avoid overriding)
-    if (existing.getInvoiceNumber() == null || existing.getInvoiceNumber().isBlank()) {
-        String receipt = generateReceiptNumber(existing);
-        existing.setInvoiceNumber(receipt);
+    // =====================================================================================
+    // NEW DONATION (NEW DONOR / SUBSCRIPTION MONTHLY ENTRY)
+    // =====================================================================================
+
+    String salt = AESUtil.generateSalt();
+    donor.setEncSalt(salt);
+    donor.setEncMonth(donor.getDonationDate().getMonthValue());
+
+    SecretKeySpec key = AESUtil.generateKey(
+            donor.getMobile() != null ? donor.getMobile() : "",
+            donor.getUniqueId() != null ? donor.getUniqueId() : "",
+            donor.getDob() != null ? donor.getDob() : "",
+            donor.getDonationDate(),
+            salt
+    );
+
+    donor.setEncKey(AESUtil.obfuscateKey(key));
+
+    // Encrypt basic identity
+    donor.setEmail(AESUtil.encryptIfNotNull(donor.getEmail(), key));
+    donor.setMobile(AESUtil.encryptIfNotNull(donor.getMobile(), key));
+    donor.setUniqueId(AESUtil.encryptIfNotNull(donor.getUniqueId(), key));
+
+    // Encrypt Razorpay
+    donor.setPaymentMethod(AESUtil.encryptIfNotNull(donor.getPaymentMethod(), key));
+    donor.setPayerEmail(AESUtil.encryptIfNotNull(donor.getPayerEmail(), key));
+    donor.setPayerContact(AESUtil.encryptIfNotNull(donor.getPayerContact(), key));
+    donor.setPaymentInfo(AESUtil.encryptIfNotNull(donor.getPaymentInfo(), key));
+
+    // Set status
+    donor.setStatus(donor.getPaymentId() != null ? "SUCCESS" : "PENDING");
+
+    // Receipt number for subscription monthly debit
+    if ("SUCCESS".equalsIgnoreCase(donor.getStatus())) {
+
+        if (donor.getSubscriptionId() != null)
+            donor.setReceiptType("SUBSCRIPTION");
+        else
+            donor.setReceiptType("ONE_TIME");
+
+        donor.setInvoiceNumber(generateReceiptNumber(donor));
     }
+
+    return donationRepo.save(donor);
 }
-
-
-        return donationRepo.save(donor);
-    }
 
     // =====================================================================================
     // SAFE DECRYPT UTIL
