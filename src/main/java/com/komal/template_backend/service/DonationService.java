@@ -669,6 +669,45 @@ public void deleteById(String id) {
 
     return "FTH-" + datePart + "-" + idPart;
 }
+    public Map<String, Object> getDonationCounts() {
+    // Normalise status used in DB
+    final String SUCCESS = "SUCCESS";
+
+    // Basic counts
+    long totalSuccess = donationRepo.countByStatus(SUCCESS);
+    long oneTimeSuccess = donationRepo.countByStatusAndSubscriptionIdIsNull(SUCCESS);
+    long monthlySuccess = donationRepo.countByStatusAndSubscriptionIdIsNotNull(SUCCESS);
+
+    // Active subscriptions
+    long activeSubscriptions = donationRepo.countBySubscriptionStatus("ACTIVE");
+
+    // Time-window: today (IST)
+    LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+    LocalDateTime startOfToday = today.atStartOfDay();
+    LocalDateTime startOfTomorrow = startOfToday.plusDays(1);
+
+    long todaySuccess = donationRepo.countByStatusAndDonationDateBetween(SUCCESS, startOfToday, startOfTomorrow);
+    long todayOneTime = donationRepo.countByStatusAndSubscriptionIdIsNullAndDonationDateBetween(SUCCESS, startOfToday, startOfTomorrow);
+    long todayMonthly = donationRepo.countByStatusAndSubscriptionIdIsNotNullAndDonationDateBetween(SUCCESS, startOfToday, startOfTomorrow);
+
+    // Optional: sum amounts in a window (server-side aggregation would be better for large datasets)
+    // Here we fetch records and sum in Java (portable). Use with care if you have many records.
+    LocalDateTime fromAll = LocalDateTime.of(1970,1,1,0,0);
+    LocalDateTime toAll = LocalDateTime.now(ZoneId.of("Asia/Kolkata")).plusDays(1);
+    List<Donourentity> allSuccessRecords = donationRepo.findByStatusAndDonationDateBetween(SUCCESS, fromAll, toAll);
+    double totalAmount = allSuccessRecords.stream().mapToDouble(Donourentity::getAmount).sum();
+
+    return Map.of(
+        "totalSuccess", totalSuccess,
+        "oneTimeSuccess", oneTimeSuccess,
+        "monthlySuccess", monthlySuccess,
+        "activeSubscriptions", activeSubscriptions,
+        "todaySuccess", todaySuccess,
+        "todayOneTime", todayOneTime,
+        "todayMonthly", todayMonthly,
+        "totalAmount", totalAmount
+    );
+}
 
 
 }
