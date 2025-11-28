@@ -828,20 +828,13 @@ if (donor.getStartDay() != null) {
             options.put("plan_id", variablePlanId);
             options.put("quantity", 1);
             options.put("addons", addons);
+            options.put("total_count", totalCount);
           if (donor.getStartDay() != null) {
     long startAt = getNextStartDate(donor.getStartDay());   
     options.put("start_at", startAt);            
 }
           else System.out.println("startdate i snull");
-String paymentMode = donor.getPaymentMode();
-          System.out.println("PaymentMode:"+paymentMode);
-          if ("UPI".equalsIgnoreCase(paymentMode)) {
-                   options.put("total_count", 30 * 12);
- // Razorpay limit for UPI
-} else  {
-               options.put("total_count", totalCount);
- // Allowed for card/netbanking/emandate
-}
+
             JSONObject notes = new JSONObject();
             notes.put("donorId", donorId);
             options.put("notes", notes);
@@ -1038,13 +1031,10 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
             JSONObject mandate = json.getJSONObject("payload")
                     .getJSONObject("mandate")
                     .getJSONObject("entity");
-
             String subscriptionId = mandate.getString("subscription_id");
             String mandateId = mandate.getString("id");
             long createdAt = mandate.getLong("created_at");
-
             Donourentity donor = donationRepo.findBySubscriptionId(subscriptionId).orElse(null);
-
             if (donor != null) {
                 donor.setRazorpayMandateId(mandateId);
                 donor.setMandateStatus("AUTHORIZED");
@@ -1221,6 +1211,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
 }
 
 }
+
 
 
 
