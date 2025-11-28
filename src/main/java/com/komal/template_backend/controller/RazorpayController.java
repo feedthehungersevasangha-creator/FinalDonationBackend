@@ -773,6 +773,7 @@ public class RazorpayController {
         try {
             donor.setStatus("PENDING");
             donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+          donor.setReceiptType("SUBSCRIPTION");
 if (donor.getStartDay() != null) {
             donor.setStartDay(donor.getStartDay()); // store user selected 5/10/15
         }
@@ -1025,6 +1026,7 @@ if (donor.getStartDay() != null) {
 }
 
 }
+
 
 
 
