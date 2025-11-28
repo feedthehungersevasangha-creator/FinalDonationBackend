@@ -785,90 +785,69 @@ if (donor.getStartDay() != null) {
             return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
         }
 
-    }@PostMapping("/create-subscription")
+    }
+  @PostMapping("/create-subscription")
 public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
 
     try {
         String donorId = (String) req.get("donorId");
-        int amountRupees = Integer.parseInt(String.valueOf(req.get("amount"))); 
+        int amountRupees = Integer.parseInt(String.valueOf(req.get("amount")));
         int totalCount = subscriptionYears * 12;
- System.out.println("🔍 DEBUG keyId = " + keyId);
-            System.out.println("🔍 DEBUG keySecret = " + keySecret);
-            System.out.println("🔍 DEBUG keyId length = " + (keyId != null ? keyId.length() : 0));
-            System.out.println("🔍 DEBUG keySecret length = " + (keySecret != null ? keySecret.length() : 0));
-            System.out.println("🔍 DEBUG variablePlanId = " + variablePlanId);
 
-            System.out.println("🔵 create-subscription called: donorId=" + donorId + " amount=" + amountRupees);
-            System.out.println("🔵 Using plan_id=" + variablePlanId + " key=" + keyId);
+        System.out.println("🔍 DEBUG keyId = " + keyId);
+        System.out.println("🔍 DEBUG keySecret = " + keySecret);
+        System.out.println("🔍 DEBUG variablePlanId = " + variablePlanId);
+
         Donourentity donor = donationRepo.findById(donorId)
                 .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
 
         RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
-        // ----------------------------
-        // 1️⃣ ADDON → ALWAYS ₹1 FIRST PAYMENT
-        // ----------------------------
-        JSONObject registrationItem = new JSONObject();
-        registrationItem.put("amount", 100);  // ₹1 ONLY
-        registrationItem.put("currency", "INR");
-        registrationItem.put("name", "Registration Fee");
+        // 1️⃣ ₹1 FIRST PAYMENT ADDON
+        JSONObject regItem = new JSONObject();
+        regItem.put("amount", 100);
+        regItem.put("currency", "INR");
+        regItem.put("name", "Registration Fee");
 
-        JSONObject registrationAddon = new JSONObject();
-        registrationAddon.put("item", registrationItem);
+        JSONObject regAddon = new JSONObject();
+        regAddon.put("item", regItem);
 
         JSONArray addons = new JSONArray();
-        addons.put(registrationAddon);
+        addons.put(regAddon);
 
-        // ----------------------------
-        // 2️⃣ Build Subscription Options
-        // ----------------------------
         JSONObject options = new JSONObject();
-      System.out.println("plan_id"+variablePlanId)
-        options.put("plan_id", variablePlanId);   
+
+        System.out.println("plan_id=" + variablePlanId);
+        options.put("plan_id", variablePlanId);
         options.put("quantity", 1);
         options.put("total_count", totalCount);
         options.put("addons", addons);
 
-        // ----------------------------
-        // 3️⃣ First monthly debit date (5/10/15 next month)
-        // ----------------------------
+        // 2️⃣ NEXT MONTH START DATE
         if (donor.getStartDay() != null) {
-            long startAt = getNextStartDate(donor.getStartDay());
-            options.put("start_at", startAt);
+            options.put("start_at", getNextStartDate(donor.getStartDay()));
+        } else {
+            options.put("start_at", (System.currentTimeMillis() / 1000) + 86400);
         }
 
-        // ----------------------------
-        // 4️⃣ Charge ₹1 IMMEDIATELY
-        // ----------------------------
+        // 3️⃣ CHARGE ₹1 NOW
         options.put("charge_at", System.currentTimeMillis() / 1000);
 
-        // ----------------------------
-        // 5️⃣ Notes (store monthly amount safely)
-        // ----------------------------
+        // 4️⃣ NOTES (MUST be string)
         JSONObject notes = new JSONObject();
         notes.put("donorId", donorId);
-        notes.put("monthlyAmount", amountRupees);  // User entered amount
+        notes.put("monthlyAmount", String.valueOf(amountRupees));
         options.put("notes", notes);
 
         System.out.println("🔵 Final subscription payload = " + options.toString(2));
 
-        // ----------------------------
-        // 6️⃣ Create Razorpay subscription
-
-        // ----------------------------
         Subscription sub = client.subscriptions.create(options);
 
-        // ----------------------------
-        // 7️⃣ Save donor subscription details
-        // ----------------------------
         donor.setSubscriptionId(sub.get("id"));
         donor.setSubscriptionStatus("CREATED");
         donor.setMonthlyAmount((double) amountRupees);
         donor.setReceiptType("SUBSCRIPTION");
-
         donationRepo.save(donor);
-       Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
-
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
@@ -884,6 +863,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
                 .body(Map.of("success", false, "message", e.getMessage()));
     }
 }
+
 
 
 //     @PostMapping("/create-subscription")
@@ -1310,6 +1290,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
 }
 
 }
+
 
 
 
