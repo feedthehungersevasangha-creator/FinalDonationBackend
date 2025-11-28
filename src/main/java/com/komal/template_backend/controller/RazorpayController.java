@@ -853,6 +853,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
 
         // ----------------------------
         // 6️⃣ Create Razorpay subscription
+
         // ----------------------------
         Subscription sub = client.subscriptions.create(options);
 
@@ -865,6 +866,8 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
         donor.setReceiptType("SUBSCRIPTION");
 
         donationRepo.save(donor);
+       Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
+
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
@@ -934,7 +937,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
 //             notes.put("donorId", donorId);
 //             options.put("notes", notes);
 
-//             System.out.println("🔵 subscription request options: " + options.toString());
+            // System.out.println("🔵 subscription request options: " + options.toString());
 //             Subscription sub = client.subscriptions.create(options);
 //             donor.setSubscriptionId(sub.get("id"));
 //             donor.setSubscriptionStatus("CREATED");
@@ -1306,6 +1309,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
 }
 
 }
+
 
 
 
