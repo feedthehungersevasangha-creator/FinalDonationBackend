@@ -526,6 +526,22 @@ public class DonationService {
 public void deleteById(String id) {
     donationRepo.deleteById(id);
 }
+           private String generateReceiptNumber(Donourentity donor) {
+    // Date part
+    String datePart = donor.getDonationDate()
+            .toLocalDate()
+            .toString()             // "2025-02-18"
+            .replaceAll("-", "");   // "20250218"
+
+    // ID last 4 chars (safe fallback)
+    String idPart = "0000";
+    if (donor.getId() != null && donor.getId().length() >= 4) {
+        idPart = donor.getId().substring(donor.getId().length() - 4).toUpperCase();
+    }
+
+    return "FTH-" + datePart + "-" + idPart;
+}
+
 
 }
 
