@@ -459,7 +459,7 @@ public class DonationService {
         if (updated.getLastName() != null) existing.setLastName(updated.getLastName());
         if (updated.getDob() != null) existing.setDob(updated.getDob());
         if (updated.getFrequency() != null) existing.setFrequency(updated.getFrequency());
-        if (updated.getPaymentMode() != null) existing.setPaymentMode(updated.getPaymentMode());
+        // if (updated.getPaymentMode() != null) existing.setPaymentMode(updated.getPaymentMode());
         if (updated.getStatus() != null) existing.setStatus(updated.getStatus());
         if (updated.getDeclaration() != null) existing.setDeclaration(updated.getDeclaration());
         if (updated.getCurrency() != null) existing.setCurrency(updated.getCurrency());
@@ -488,9 +488,9 @@ public class DonationService {
         updateEncryptedField(existing::setEmail, updated.getEmail(), key);
         updateEncryptedField(existing::setMobile, updated.getMobile(), key);
         updateEncryptedField(existing::setUniqueId, updated.getUniqueId(), key);
-        updateEncryptedField(existing::setBankName, updated.getBankName(), key);
-        updateEncryptedField(existing::setIfsc, updated.getIfsc(), key);
-        updateEncryptedField(existing::setAccountNumber, updated.getAccountNumber(), key);
+        // updateEncryptedField(existing::setBankName, updated.getBankName(), key);
+        // updateEncryptedField(existing::setIfsc, updated.getIfsc(), key);
+        // updateEncryptedField(existing::setAccountNumber, updated.getAccountNumber(), key);
 
         return donationRepo.save(existing);
     }
@@ -508,9 +508,9 @@ public class DonationService {
             d.setEmail(safeDecrypt(d.getEmail(), key));
             d.setMobile(safeDecrypt(d.getMobile(), key));
             d.setUniqueId(safeDecrypt(d.getUniqueId(), key));
-            d.setBankName(safeDecrypt(d.getBankName(), key));
-            d.setIfsc(safeDecrypt(d.getIfsc(), key));
-            d.setAccountNumber(safeDecrypt(d.getAccountNumber(), key));
+            // d.setBankName(safeDecrypt(d.getBankName(), key));
+            // d.setIfsc(safeDecrypt(d.getIfsc(), key));
+            // d.setAccountNumber(safeDecrypt(d.getAccountNumber(), key));
             d.setPaymentMethod(safeDecrypt(d.getPaymentMethod(), key));
             d.setPaymentInfo(safeDecrypt(d.getPaymentInfo(), key));
             d.setUpiId(safeDecrypt(d.getUpiId(), key));
