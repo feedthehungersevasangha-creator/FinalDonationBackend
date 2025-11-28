@@ -391,9 +391,9 @@ public class DonationService {
         donor.setEmail(AESUtil.encryptIfNotNull(donor.getEmail(), key));
         donor.setMobile(AESUtil.encryptIfNotNull(donor.getMobile(), key));
         donor.setUniqueId(AESUtil.encryptIfNotNull(donor.getUniqueId(), key));
-        donor.setBankName(AESUtil.encryptIfNotNull(donor.getBankName(), key));
-        donor.setIfsc(AESUtil.encryptIfNotNull(donor.getIfsc(), key));
-        donor.setAccountNumber(AESUtil.encryptIfNotNull(donor.getAccountNumber(), key));
+        // donor.setBankName(AESUtil.encryptIfNotNull(donor.getBankName(), key));
+        // donor.setIfsc(AESUtil.encryptIfNotNull(donor.getIfsc(), key));
+        // donor.setAccountNumber(AESUtil.encryptIfNotNull(donor.getAccountNumber(), key));
 
         donor.setStatus(donor.getPaymentId() != null ? "SUCCESS" : "PENDING");
 
@@ -421,10 +421,10 @@ public class DonationService {
 
                 d.setEmail(safeDecrypt(d.getEmail(), key));
                 d.setMobile(safeDecrypt(d.getMobile(), key));
-                d.setUniqueId(safeDecrypt(d.getUniqueId(), key));
-                d.setBankName(safeDecrypt(d.getBankName(), key));
-                d.setIfsc(MaskingUtil.maskIfsc(safeDecrypt(d.getIfsc(), key)));
-                d.setAccountNumber(MaskingUtil.maskAccountNumber(safeDecrypt(d.getAccountNumber(), key)));
+                // d.setUniqueId(safeDecrypt(d.getUniqueId(), key));
+                // d.setBankName(safeDecrypt(d.getBankName(), key));
+                // d.setIfsc(MaskingUtil.maskIfsc(safeDecrypt(d.getIfsc(), key)));
+                // d.setAccountNumber(MaskingUtil.maskAccountNumber(safeDecrypt(d.getAccountNumber(), key)));
                 d.setPaymentMethod(safeDecrypt(d.getPaymentMethod(), key));
                 d.setPaymentInfo(safeDecrypt(d.getPaymentInfo(), key));
                 d.setUpiId(safeDecrypt(d.getUpiId(), key));
