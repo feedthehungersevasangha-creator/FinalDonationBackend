@@ -593,13 +593,13 @@ public class Donourentity {
     private String uniqueIdHash;   // HMAC for search
     private String frequency;
     private double amount;
-    private String paymentMode;
-    private String bankName;    //
-    private String bankNameHash;   // HMAC
-    private String ifsc;
-    private String ifscHash;       // HMAC
-    private String accountNumber; //
-    private String accountNumberHash; // HMAC
+    // private String paymentMode;
+    // private String bankName;    //
+    // private String bankNameHash;   // HMAC
+    // private String ifsc;
+    // private String ifscHash;       // HMAC
+    // private String accountNumber; //
+    // private String accountNumberHash; // HMAC
     private String paymentId;
     private String orderId;
     private String status;
@@ -789,10 +789,6 @@ public class Donourentity {
     public void setInvoiceNumber(String invoiceNumber) {
         this.invoiceNumber = invoiceNumber;
     }
-
-       // if available
-// you already have subscriptionId, subscriptionStatus, paymentId, orderId, amount etc.
-
     public Double getMonthlyAmount() {
         return monthlyAmount;
     }
@@ -876,7 +872,6 @@ public class Donourentity {
         this.declaration = declaration;
     }
 
-
     public String getSignature() {
         return signature;
     }
@@ -908,9 +903,6 @@ public class Donourentity {
     public void setStatus(String status) {
         this.status = status;
     }
-
-
-
 
     public String getEncKey() {
         return encKey;
@@ -951,20 +943,20 @@ public class Donourentity {
     public String getFrequency() { return frequency; }
     public void setFrequency(String frequency) { this.frequency = frequency; }
 
-    public double getAmount() { return amount; }
-    public void setAmount(double amount) { this.amount = amount; }
+    // public double getAmount() { return amount; }
+    // public void setAmount(double amount) { this.amount = amount; }
 
-    public String getPaymentMode() { return paymentMode; }
-    public void setPaymentMode(String paymentMode) { this.paymentMode = paymentMode; }
+    // public String getPaymentMode() { return paymentMode; }
+    // public void setPaymentMode(String paymentMode) { this.paymentMode = paymentMode; }
 
-    public String getIfsc() { return ifsc; }
-    public void setIfsc(String ifsc) { this.ifsc = ifsc; }
+    // public String getIfsc() { return ifsc; }
+    // public void setIfsc(String ifsc) { this.ifsc = ifsc; }
 
-    public String getBankName() { return bankName; }
-    public void setBankName(String bankName) { this.bankName = bankName; }
+    // public String getBankName() { return bankName; }
+    // public void setBankName(String bankName) { this.bankName = bankName; }
 
-    public String getAccountNumber() { return accountNumber; }
-    public void setAccountNumber(String accountNumber) { this.accountNumber = accountNumber; }
+    // public String getAccountNumber() { return accountNumber; }
+    // public void setAccountNumber(String accountNumber) { this.accountNumber = accountNumber; }
 
     public LocalDateTime getDonationDate() { return donationDate; }
     public void setDonationDate(LocalDateTime donationDate) { this.donationDate = donationDate; }
