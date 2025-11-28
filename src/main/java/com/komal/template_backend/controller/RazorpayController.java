@@ -906,14 +906,15 @@ if (donor.getStartDay() != null) {
 
             JSONObject options = new JSONObject();
             options.put("plan_id", variablePlanId);
-            options.put("quantity", 1);
+            options.put("quantity", amountRupees);
             options.put("addons", addons);
             options.put("total_count", totalCount);
           if (donor.getStartDay() != null) {
     long startAt = getNextStartDate(donor.getStartDay());   
     options.put("start_at", startAt);            
 }
-          else System.out.println("startdate i snull");
+         else System.out.println("startdate i snull");
+            options.put("charge_at", System.currentTimeMillis() / 1000); 
 
             JSONObject notes = new JSONObject();
             notes.put("donorId", donorId);
@@ -1291,6 +1292,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
 }
 
 }
+
 
 
 
