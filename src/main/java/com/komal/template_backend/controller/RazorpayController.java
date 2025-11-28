@@ -767,44 +767,6 @@ public class RazorpayController {
         }
         return hexString.toString();
     }
-// @GetMapping("/create-variable-plan")
-// public ResponseEntity<?> createVariablePlan() {
-//     try {
-//         RazorpayClient client = new RazorpayClient(keyId, keySecret);
-
-//         JSONObject planDetails = new JSONObject();
-//         planDetails.put("period", "monthly");
-//         planDetails.put("interval", 1);
-
-//         // THIS IS IMPORTANT → plan amount must be 0 for variable plans
-//         planDetails.put("item", new JSONObject()
-//                 .put("name", "Variable Donation Plan")
-//                 .put("amount", 100)       // REQUIRED FOR VARIABLE PLAN
-//                 .put("currency", "INR")
-//         );
-
-//         // THIS ENABLES VARIABLE AMOUNT ADDONS
-//         planDetails.put("notes", new JSONObject()
-//                 .put("type", "variable-base")
-//         );
-
-//         System.out.println("Creating variable plan:\n" + planDetails.toString(2));
-
-//         com.razorpay.Plan plan = client.plans.create(planDetails);
-
-//         return ResponseEntity.ok(Map.of(
-//                 "success", true,
-//                 "plan_id", plan.get("id")
-//         ));
-
-//     } catch (Exception e) {
-//         e.printStackTrace();
-//         return ResponseEntity.status(500).body(Map.of(
-//                 "success", false,
-//                 "message", e.getMessage()
-//         ));
-//     }
-// }
 @GetMapping("/create-variable-plan")
 public ResponseEntity<?> createVariablePlan() {
     try {
@@ -814,17 +776,17 @@ public ResponseEntity<?> createVariablePlan() {
         planDetails.put("period", "monthly");
         planDetails.put("interval", 1);
 
-        JSONObject item = new JSONObject();
-        item.put("name", "Variable Donation Plan");
-        item.put("amount", 100);     // ₹1 → REQUIRED
-        item.put("currency", "INR");
+        planDetails.put("item", new JSONObject()
+                .put("name", "Variable Donation Plan")
+                .put("amount", 100)  // ₹1 (minimum allowed)
+                .put("currency", "INR")
+        );
 
-        planDetails.put("item", item);
+        planDetails.put("notes", new JSONObject()
+                .put("variable_amount", true)   // ✅ REAL Razorpay flag
+        );
 
-        // tagging as variable plan (for your identification)
-        JSONObject notes = new JSONObject();
-        notes.put("type", "variable-subscription");
-        planDetails.put("notes", notes);
+        System.out.println("PLAN: " + planDetails.toString(2));
 
         com.razorpay.Plan plan = client.plans.create(planDetails);
 
@@ -832,6 +794,7 @@ public ResponseEntity<?> createVariablePlan() {
                 "success", true,
                 "plan_id", plan.get("id")
         ));
+
     } catch (Exception e) {
         return ResponseEntity.status(500).body(Map.of(
                 "success", false,
@@ -839,6 +802,7 @@ public ResponseEntity<?> createVariablePlan() {
         ));
     }
 }
+
 
     @PostMapping("/create-donor-record")
     public ResponseEntity<?> createDonorRecord(@RequestBody Donourentity donor) {
@@ -1364,6 +1328,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
 }
 
 }
+
 
 
 
