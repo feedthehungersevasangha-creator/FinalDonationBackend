@@ -812,7 +812,7 @@ public class RazorpayController {
 
             JSONObject options = new JSONObject();
             options.put("plan_id", variablePlanId);
-            options.put("total_count", 12);
+            options.put("total_count", 40 * 12);
             options.put("quantity", 1);
             options.put("addons", addons);
 
@@ -991,6 +991,7 @@ public class RazorpayController {
         }
     }
 }
+
 
 
 
