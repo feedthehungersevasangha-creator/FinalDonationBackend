@@ -826,14 +826,22 @@ if (donor.getStartDay() != null) {
 
             JSONObject options = new JSONObject();
             options.put("plan_id", variablePlanId);
-            options.put("total_count", totalCount);
             options.put("quantity", 1);
             options.put("addons", addons);
           if (donor.getStartDay() != null) {
-    long startAt = getNextStartDate(donor.getStartDay());
+    long startAt = getNextStartDate(donor.getStartDay());   
     options.put("start_at", startAt);
+            
 }
-
+          else System.out.println("startdate i snull")
+String paymentMode = donor.getPaymentMode();
+          if ("UPI".equalsIgnoreCase(paymentMode)) {
+                   options.put("total_count", 30 * 12);
+ // Razorpay limit for UPI
+} else  {
+               options.put("total_count", totalCount);
+ // Allowed for card/netbanking/emandate
+}
             JSONObject notes = new JSONObject();
             notes.put("donorId", donorId);
             options.put("notes", notes);
@@ -1026,6 +1034,7 @@ if (donor.getStartDay() != null) {
 }
 
 }
+
 
 
 
