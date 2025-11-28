@@ -801,16 +801,16 @@ if (donor.getStartDay() != null) {
 
             System.out.println("🔵 create-subscription called: donorId=" + donorId + " amount=" + amountRupees);
             System.out.println("🔵 Using plan_id=" + variablePlanId + " key=" + keyId);
-System.out.println("➡ startDay from donor = " + donor.getStartDay());
-if (donor.getStartDay() != null) {
-    System.out.println("➡ start_at timestamp = " + getNextStartDate(donor.getStartDay()));
-}
+
 
             Donourentity donor = donationRepo.findById(donorId)
                     .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
 
             RazorpayClient client = new RazorpayClient(keyId, keySecret);
-
+System.out.println("➡ startDay from donor = " + donor.getStartDay());
+if (donor.getStartDay() != null) {
+    System.out.println("➡ start_at timestamp = " + getNextStartDate(donor.getStartDay()));
+}
             // Build addon item (paise)
             JSONObject item = new JSONObject();
             item.put("amount", amountRupees * 100);
@@ -1025,6 +1025,7 @@ if (donor.getStartDay() != null) {
 }
 
 }
+
 
 
 
