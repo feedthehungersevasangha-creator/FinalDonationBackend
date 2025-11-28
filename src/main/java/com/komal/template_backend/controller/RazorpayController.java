@@ -830,11 +830,11 @@ if (donor.getStartDay() != null) {
             options.put("addons", addons);
           if (donor.getStartDay() != null) {
     long startAt = getNextStartDate(donor.getStartDay());   
-    options.put("start_at", startAt);
-            
+    options.put("start_at", startAt);            
 }
           else System.out.println("startdate i snull");
 String paymentMode = donor.getPaymentMode();
+          System.out.println("PaymentMode:"+paymentMode);
           if ("UPI".equalsIgnoreCase(paymentMode)) {
                    options.put("total_count", 30 * 12);
  // Razorpay limit for UPI
@@ -847,9 +847,7 @@ String paymentMode = donor.getPaymentMode();
             options.put("notes", notes);
 
             System.out.println("🔵 subscription request options: " + options.toString());
-
             Subscription sub = client.subscriptions.create(options);
-
             donor.setSubscriptionId(sub.get("id"));
             donor.setSubscriptionStatus("CREATED");
             donor.setMonthlyAmount((double) amountRupees);
@@ -1034,6 +1032,7 @@ String paymentMode = donor.getPaymentMode();
 }
 
 }
+
 
 
 
