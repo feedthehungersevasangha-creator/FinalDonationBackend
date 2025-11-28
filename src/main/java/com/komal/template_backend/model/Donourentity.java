@@ -593,7 +593,7 @@ public class Donourentity {
     private String uniqueIdHash;   // HMAC for search
     private String frequency;
     private double amount;
-    // private String paymentMode;
+    private String paymentMode;
     // private String bankName;    //
     // private String bankNameHash;   // HMAC
     // private String ifsc;
@@ -948,8 +948,8 @@ public void setStartDay(Integer startDay) { this.startDay = startDay; }
     public double getAmount() { return amount; }
     public void setAmount(double amount) { this.amount = amount; }
 
-    // public String getPaymentMode() { return paymentMode; }
-    // public void setPaymentMode(String paymentMode) { this.paymentMode = paymentMode; }
+    public String getPaymentMode() { return paymentMode; }
+    public void setPaymentMode(String paymentMode) { this.paymentMode = paymentMode; }
 
     // public String getIfsc() { return ifsc; }
     // public void setIfsc(String ifsc) { this.ifsc = ifsc; }
