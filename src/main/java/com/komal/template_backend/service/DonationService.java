@@ -388,6 +388,7 @@ public class DonationService {
         String salt = AESUtil.generateSalt();
         donor.setEncSalt(salt);
         donor.setEncMonth(donor.getDonationDate().getMonthValue());
+donor.setStartDay(donor.getStartDay());
 
         // Generate key using identity + date + salt
         SecretKeySpec key = AESUtil.generateKey(
