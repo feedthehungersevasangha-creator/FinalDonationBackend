@@ -779,13 +779,13 @@ public ResponseEntity<?> createVariablePlan() {
         // THIS IS IMPORTANT → plan amount must be 0 for variable plans
         planDetails.put("item", new JSONObject()
                 .put("name", "Variable Donation Plan")
-                .put("amount", 1)       // REQUIRED FOR VARIABLE PLAN
+                .put("amount", 100)       // REQUIRED FOR VARIABLE PLAN
                 .put("currency", "INR")
         );
 
         // THIS ENABLES VARIABLE AMOUNT ADDONS
         planDetails.put("notes", new JSONObject()
-                .put("type", "variable")
+                .put("type", "variable-base")
         );
 
         System.out.println("Creating variable plan:\n" + planDetails.toString(2));
@@ -1330,6 +1330,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
 }
 
 }
+
 
 
 
