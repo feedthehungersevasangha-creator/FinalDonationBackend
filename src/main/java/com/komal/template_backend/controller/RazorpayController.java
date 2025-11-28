@@ -823,7 +823,8 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
         // 2️⃣ Build Subscription Options
         // ----------------------------
         JSONObject options = new JSONObject();
-        options.put("plan_id", variablePlanId);   // YOUR variable plan
+      System.out.println("plan_id"+variablePlanId)
+        options.put("plan_id", variablePlanId);   
         options.put("quantity", 1);
         options.put("total_count", totalCount);
         options.put("addons", addons);
@@ -1309,6 +1310,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
 }
 
 }
+
 
 
 
