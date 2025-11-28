@@ -396,6 +396,23 @@ public class DonationService {
         // donor.setAccountNumber(AESUtil.encryptIfNotNull(donor.getAccountNumber(), key));
 
         donor.setStatus(donor.getPaymentId() != null ? "SUCCESS" : "PENDING");
+               // 🔥 Auto-generate receipt only after successful payment
+if ("SUCCESS".equalsIgnoreCase(existing.getStatus())) {
+
+    // Set receipt type
+    if (existing.getSubscriptionId() != null) {
+        existing.setReceiptType("SUBSCRIPTION");
+    } else {
+        existing.setReceiptType("ONE_TIME");
+    }
+
+    // Generate receipt number only if empty (avoid overriding)
+    if (existing.getInvoiceNumber() == null || existing.getInvoiceNumber().isBlank()) {
+        String receipt = generateReceiptNumber(existing);
+        existing.setInvoiceNumber(receipt);
+    }
+}
+
 
         return donationRepo.save(donor);
     }
