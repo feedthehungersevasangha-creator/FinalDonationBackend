@@ -16,26 +16,28 @@
 // import org.springframework.beans.factory.annotation.Value;
 // import org.springframework.http.ResponseEntity;
 // import org.springframework.web.bind.annotation.*;
-
 // import javax.crypto.Mac;
 // import javax.crypto.spec.SecretKeySpec;
+// import java.time.Instant;
 // import java.time.LocalDateTime;
+// import java.time.ZoneId;
 // import java.util.Map;
 // import java.util.Optional;
 
 // @RestController
 // @RequestMapping("/api/payment")
 // public class RazorpayController {
-
 //     @Value("${razorpay.key_id}")
 //     private String keyId;
-
 //     @Value("${razorpay.key_secret}")
 //     private String keySecret;
 //     @Value("${razorpay.variable_plan_id}")
 //     private String variablePlanId;
 //     @Value("${razorpay.webhook_secret}")
 //     private String webhookSecret ;
+//     @Value("${razorpay.subscription_years:40}")
+//     private int subscriptionYears;
+
 //     @Autowired
 //     DonationService donationService;
 
@@ -59,7 +61,7 @@
 //             // ✅ Attach orderId + set pending
 //             donor.setOrderId(order.get("id"));
 //             donor.setStatus("PENDING");
-//             donor.setDonationDate(LocalDateTime.now());
+//             donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
 
 //             // ✅ Save donor details (with encryption inside your service)
 //             Donourentity saved = donationService.saveDonation(donor);
@@ -169,7 +171,7 @@
 //                 donor.setPayerContact(payerContact);
 
 //                 donor.setAmount(amount / 100.0);
-//                 donor.setDonationDate(LocalDateTime.now());
+//                 donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
 
 //                 // Save the updated donor (donationService.saveDonation handles existing-case re-encryption)
 //                 Donourentity saved = donationService.saveDonation(donor);
@@ -269,7 +271,7 @@
 //     public ResponseEntity<?> createDonorRecord(@RequestBody Donourentity donor) {
 //         try {
 //             donor.setStatus("PENDING");
-//             donor.setDonationDate(LocalDateTime.now());
+//             donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
 
 //             Donourentity saved = donationService.saveDonation(donor);
 
@@ -283,9 +285,11 @@
 
 //     @PostMapping("/create-subscription")
 //     public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+              
 //         try {
 //             String donorId = (String) req.get("donorId");
-//             int amountRupees = Integer.parseInt(String.valueOf(req.get("amount"))); // must be integer rupees
+//             int amountRupees = Integer.parseInt(String.valueOf(req.get("amount"))); 
+//             int totalCount = subscriptionYears * 12;  
 //             System.out.println("🔍 DEBUG keyId = " + keyId);
 //             System.out.println("🔍 DEBUG keySecret = " + keySecret);
 //             System.out.println("🔍 DEBUG keyId length = " + (keyId != null ? keyId.length() : 0));
@@ -314,7 +318,7 @@
 
 //             JSONObject options = new JSONObject();
 //             options.put("plan_id", variablePlanId);
-//             options.put("total_count", 12);
+//             options.put("total_count", totalCount);
 //             options.put("quantity", 1);
 //             options.put("addons", addons);
 
@@ -349,7 +353,7 @@
 //     public ResponseEntity<?> handleWebhook(@RequestBody String payload, @RequestHeader("X-Razorpay-Signature") String signature) {
 //         try {
 //             System.out.println("🔔 webhook payload: " + payload);
-          
+
 
 //             if (!Utils.verifyWebhookSignature(payload, signature, webhookSecret)) {
 //                 System.out.println("❌ invalid webhook signature");
@@ -358,8 +362,8 @@
 //             JSONObject json = new JSONObject(payload);
 //             // handle events as already implemented (subscription.activated, subscription.charged, mandate.authorized)
 //             String event = json.getString("event");
-//               System.out.println("🔔 Webhook event received: " + event);
-// System.out.println("🔔 Full payload:\n" + json.toString(2));
+//             System.out.println("🔔 Webhook event received: " + event);
+//             System.out.println("🔔 Full payload:\n" + json.toString(2));
 
 //             // =========================
 //             // 1️⃣ MANDATE AUTHORIZED
@@ -379,20 +383,24 @@
 //                     donor.setRazorpayMandateId(mandateId);
 //                     donor.setMandateStatus("AUTHORIZED");
 //                     donor.setMandateStartDate(
-//                             LocalDateTime.ofEpochSecond(createdAt, 0, java.time.ZoneOffset.UTC)
+//                             LocalDateTime.ofInstant(Instant.ofEpochSecond(createdAt), ZoneId.of("Asia/Kolkata"))
 //                     );
+
+// //                    donor.setMandateStartDate(
+// //                            LocalDateTime.ofEpochSecond(createdAt, 0, java.time.ZoneOffset.UTC)
+// //                    );
 //                     donationRepo.save(donor);
 //                     Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
-//                       byte[] pdf = pdfReceiptService.generateMandateConfirmation(decrypted);
+//                     byte[] pdf = pdfReceiptService.generateMandateConfirmation(decrypted);
 
-//             mailService.sendDonationReceiptWithAttachment(
-//                     decrypted.getEmail(),
-//                     decrypted.getFirstName() + " " + decrypted.getLastName(),
-//                     0.0,
-//                     decrypted.getSubscriptionId(),
-//                     pdf,
-//                     "Mandate_" + decrypted.getSubscriptionId() + ".pdf"
-//             );
+//                     mailService.sendDonationReceiptWithAttachment(
+//                             decrypted.getEmail(),
+//                             decrypted.getFirstName() + " " + decrypted.getLastName(),
+//                             0.0,
+//                             decrypted.getSubscriptionId(),
+//                             pdf,
+//                             "Mandate_" + decrypted.getSubscriptionId() + ".pdf"
+//                     );
 //                 }
 //             }
 //             // =========================
@@ -460,7 +468,7 @@
 //                     monthly.setWallet(wallet);
 //                     monthly.setAmount(amount);
 //                     monthly.setStatus("SUCCESS");
-//                     monthly.setDonationDate(LocalDateTime.now());
+//                     monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
 
 //                     donationService.saveDonation(monthly);
 //                     Donourentity decrypted = donationService.findByIdDecrypt(monthly.getId());
@@ -489,12 +497,6 @@
 //         }
 //     }
 // }
-
-
-
-
-
-
 
 
 
@@ -996,6 +998,18 @@ public class RazorpayController {
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
