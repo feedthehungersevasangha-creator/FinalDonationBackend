@@ -767,6 +767,44 @@ public class RazorpayController {
         }
         return hexString.toString();
     }
+@PostMapping("/create-variable-plan")
+public ResponseEntity<?> createVariablePlan() {
+    try {
+        RazorpayClient client = new RazorpayClient(keyId, keySecret);
+
+        JSONObject planDetails = new JSONObject();
+        planDetails.put("period", "monthly");
+        planDetails.put("interval", 1);
+
+        // THIS IS IMPORTANT → plan amount must be 0 for variable plans
+        planDetails.put("item", new JSONObject()
+                .put("name", "Variable Donation Plan")
+                .put("amount", 0)       // REQUIRED FOR VARIABLE PLAN
+                .put("currency", "INR")
+        );
+
+        // THIS ENABLES VARIABLE AMOUNT ADDONS
+        planDetails.put("notes", new JSONObject()
+                .put("type", "variable")
+        );
+
+        System.out.println("Creating variable plan:\n" + planDetails.toString(2));
+
+        com.razorpay.Plan plan = client.plans.create(planDetails);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "plan_id", plan.get("id")
+        ));
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+        ));
+    }
+}
 
     @PostMapping("/create-donor-record")
     public ResponseEntity<?> createDonorRecord(@RequestBody Donourentity donor) {
@@ -1292,6 +1330,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
 }
 
 }
+
 
 
 
