@@ -534,6 +534,9 @@ public class RazorpayController {
     private String variablePlanId;
     @Value("${razorpay.webhook_secret}")
     private String webhookSecret ;
+    @Value("${razorpay.subscription_years:40}")
+    private int subscriptionYears;
+
     @Autowired
     DonationService donationService;
 
@@ -781,9 +784,11 @@ public class RazorpayController {
 
     @PostMapping("/create-subscription")
     public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+              
         try {
             String donorId = (String) req.get("donorId");
-            int amountRupees = Integer.parseInt(String.valueOf(req.get("amount"))); // must be integer rupees
+            int amountRupees = Integer.parseInt(String.valueOf(req.get("amount"))); 
+            int totalCount = subscriptionYears * 12;  
             System.out.println("🔍 DEBUG keyId = " + keyId);
             System.out.println("🔍 DEBUG keySecret = " + keySecret);
             System.out.println("🔍 DEBUG keyId length = " + (keyId != null ? keyId.length() : 0));
@@ -812,7 +817,7 @@ public class RazorpayController {
 
             JSONObject options = new JSONObject();
             options.put("plan_id", variablePlanId);
-            options.put("total_count", 40 * 12);
+            options.put("total_count", totalCount);
             options.put("quantity", 1);
             options.put("addons", addons);
 
@@ -991,6 +996,7 @@ public class RazorpayController {
         }
     }
 }
+
 
 
 
