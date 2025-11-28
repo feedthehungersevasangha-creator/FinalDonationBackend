@@ -786,158 +786,159 @@ if (donor.getStartDay() != null) {
         }
 
     }
-  @PostMapping("/create-subscription")
-public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+//   @PostMapping("/create-subscription")
+// public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
 
-    try {
-        String donorId = (String) req.get("donorId");
-        int amountRupees = Integer.parseInt(String.valueOf(req.get("amount")));
-        int totalCount = subscriptionYears * 12;
+//     try {
+//         String donorId = (String) req.get("donorId");
+//         int amountRupees = Integer.parseInt(String.valueOf(req.get("amount")));
+//         int totalCount = subscriptionYears * 12;
 
-        System.out.println("🔍 DEBUG keyId = " + keyId);
-        System.out.println("🔍 DEBUG keySecret = " + keySecret);
-        System.out.println("🔍 DEBUG variablePlanId = " + variablePlanId);
+//         System.out.println("🔍 DEBUG keyId = " + keyId);
+//         System.out.println("🔍 DEBUG keySecret = " + keySecret);
+//         System.out.println("🔍 DEBUG variablePlanId = " + variablePlanId);
 
-        Donourentity donor = donationRepo.findById(donorId)
-                .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
+//         Donourentity donor = donationRepo.findById(donorId)
+//                 .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
 
-        RazorpayClient client = new RazorpayClient(keyId, keySecret);
+//         RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
-        // 1️⃣ ₹1 FIRST PAYMENT ADDON
-        JSONObject regItem = new JSONObject();
-        regItem.put("amount", 100);
-        regItem.put("currency", "INR");
-        regItem.put("name", "Registration Fee");
+//         // 1️⃣ ₹1 FIRST PAYMENT ADDON
+//         JSONObject regItem = new JSONObject();
+//         regItem.put("amount", 100);
+//         regItem.put("currency", "INR");
+//         regItem.put("name", "Registration Fee");
 
-        JSONObject regAddon = new JSONObject();
-        regAddon.put("item", regItem);
+//         JSONObject regAddon = new JSONObject();
+//         regAddon.put("item", regItem);
 
-        JSONArray addons = new JSONArray();
-        addons.put(regAddon);
+//         JSONArray addons = new JSONArray();
+//         addons.put(regAddon);
 
-        JSONObject options = new JSONObject();
+//         JSONObject options = new JSONObject();
 
-        System.out.println("plan_id=" + variablePlanId);
-        options.put("plan_id", variablePlanId);
-        options.put("quantity", 1);
-        options.put("total_count", totalCount);
-        options.put("addons", addons);
+//         System.out.println("plan_id=" + variablePlanId);
+//         options.put("plan_id", variablePlanId);
+//         options.put("quantity", 1);
+//         options.put("total_count", totalCount);
+//         options.put("addons", addons);
 
-        // 2️⃣ NEXT MONTH START DATE
-        if (donor.getStartDay() != null) {
-            options.put("start_at", getNextStartDate(donor.getStartDay()));
-        } else {
-            options.put("start_at", (System.currentTimeMillis() / 1000) + 86400);
-        }
-
-        // 3️⃣ CHARGE ₹1 NOW
-        options.put("charge_at", System.currentTimeMillis() / 1000);
-
-        // 4️⃣ NOTES (MUST be string)
-        JSONObject notes = new JSONObject();
-        notes.put("donorId", donorId);
-        notes.put("monthlyAmount", String.valueOf(amountRupees));
-        options.put("notes", notes);
-
-        System.out.println("🔵 Final subscription payload = " + options.toString(2));
-
-        Subscription sub = client.subscriptions.create(options);
-
-        donor.setSubscriptionId(sub.get("id"));
-        donor.setSubscriptionStatus("CREATED");
-        donor.setMonthlyAmount((double) amountRupees);
-        donor.setReceiptType("SUBSCRIPTION");
-        donationRepo.save(donor);
-
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "subscription_id", sub.get("id"),
-                "keyId", keyId,
-                "donorId", donor.getId(),
-                "short_url", sub.toJson().optString("short_url")
-        ));
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500)
-                .body(Map.of("success", false, "message", e.getMessage()));
-    }
-}
-
-
-
-//     @PostMapping("/create-subscription")
-//     public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
-              
-//         try {
-//             String donorId = (String) req.get("donorId");
-//             int amountRupees = Integer.parseInt(String.valueOf(req.get("amount"))); 
-//             int totalCount = subscriptionYears * 12;  
-            // System.out.println("🔍 DEBUG keyId = " + keyId);
-            // System.out.println("🔍 DEBUG keySecret = " + keySecret);
-            // System.out.println("🔍 DEBUG keyId length = " + (keyId != null ? keyId.length() : 0));
-            // System.out.println("🔍 DEBUG keySecret length = " + (keySecret != null ? keySecret.length() : 0));
-            // System.out.println("🔍 DEBUG variablePlanId = " + variablePlanId);
-
-            // System.out.println("🔵 create-subscription called: donorId=" + donorId + " amount=" + amountRupees);
-            // System.out.println("🔵 Using plan_id=" + variablePlanId + " key=" + keyId);
-
-
-//             Donourentity donor = donationRepo.findById(donorId)
-//                     .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
-
-//             RazorpayClient client = new RazorpayClient(keyId, keySecret);
-// System.out.println("➡ startDay from donor = " + donor.getStartDay());
-// if (donor.getStartDay() != null) {
-//     System.out.println("➡ start_at timestamp = " + getNextStartDate(donor.getStartDay()));
-// }
-//             // Build addon item (paise)
-//             JSONObject item = new JSONObject();
-//             item.put("amount", amountRupees * 100);
-//             item.put("currency", "INR");
-//             item.put("name", "Monthly Donation");
-
-//             JSONObject addon = new JSONObject();
-//             addon.put("item", item);
-
-//             JSONArray addons = new JSONArray();
-//             addons.put(addon);
-
-//             JSONObject options = new JSONObject();
-//             options.put("plan_id", variablePlanId);
-//             options.put("quantity", 1);
-//             options.put("addons", addons);
-//             options.put("total_count", totalCount);
-//           if (donor.getStartDay() != null) {
-//     long startAt = getNextStartDate(donor.getStartDay());   
-//     options.put("start_at", startAt);            
-// }
-//           else System.out.println("startdate i snull");
-
-//             JSONObject notes = new JSONObject();
-//             notes.put("donorId", donorId);
-//             options.put("notes", notes);
-
-            // System.out.println("🔵 subscription request options: " + options.toString());
-//             Subscription sub = client.subscriptions.create(options);
-//             donor.setSubscriptionId(sub.get("id"));
-//             donor.setSubscriptionStatus("CREATED");
-//             donor.setMonthlyAmount((double) amountRupees);
-//             donor.setReceiptType("SUBSCRIPTION");
-//             donationRepo.save(donor);
-//             Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
-//             return ResponseEntity.ok(Map.of(
-//                     "success", true,
-//                     "subscription_id", sub.get("id"),
-//                     "keyId", keyId,
-//                     "donorId", donor.getId(),
-//                     "short_url", sub.toJson().optString("short_url")
-//             ));
-//         } catch (Exception e) {
-//             e.printStackTrace();
-//             return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
+//         // 2️⃣ NEXT MONTH START DATE
+//         if (donor.getStartDay() != null) {
+//             options.put("start_at", getNextStartDate(donor.getStartDay()));
+//         } else {
+//             options.put("start_at", (System.currentTimeMillis() / 1000) + 86400);
 //         }
+
+//         // 3️⃣ CHARGE ₹1 NOW
+//         options.put("charge_at", System.currentTimeMillis() / 1000);
+
+//         // 4️⃣ NOTES (MUST be string)
+//         JSONObject notes = new JSONObject();
+//         notes.put("donorId", donorId);
+//         notes.put("monthlyAmount", String.valueOf(amountRupees));
+//         options.put("notes", notes);
+
+//         System.out.println("🔵 Final subscription payload = " + options.toString(2));
+
+//         Subscription sub = client.subscriptions.create(options);
+
+//         donor.setSubscriptionId(sub.get("id"));
+//         donor.setSubscriptionStatus("CREATED");
+//         donor.setMonthlyAmount((double) amountRupees);
+//         donor.setReceiptType("SUBSCRIPTION");
+//         donationRepo.save(donor);
+
+//         return ResponseEntity.ok(Map.of(
+//                 "success", true,
+//                 "subscription_id", sub.get("id"),
+//                 "keyId", keyId,
+//                 "donorId", donor.getId(),
+//                 "short_url", sub.toJson().optString("short_url")
+//         ));
+
+//     } catch (Exception e) {
+//         e.printStackTrace();
+//         return ResponseEntity.status(500)
+//                 .body(Map.of("success", false, "message", e.getMessage()));
 //     }
+// }
+
+
+
+    @PostMapping("/create-subscription")
+    public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+              
+        try {
+            String donorId = (String) req.get("donorId");
+            int amountRupees = Integer.parseInt(String.valueOf(req.get("amount"))); 
+            int totalCount = subscriptionYears * 12;  
+            System.out.println("🔍 DEBUG keyId = " + keyId);
+            System.out.println("🔍 DEBUG keySecret = " + keySecret);
+            System.out.println("🔍 DEBUG keyId length = " + (keyId != null ? keyId.length() : 0));
+            System.out.println("🔍 DEBUG keySecret length = " + (keySecret != null ? keySecret.length() : 0));
+            System.out.println("🔍 DEBUG variablePlanId = " + variablePlanId);
+
+            System.out.println("🔵 create-subscription called: donorId=" + donorId + " amount=" + amountRupees);
+            System.out.println("🔵 Using plan_id=" + variablePlanId + " key=" + keyId);
+
+
+            Donourentity donor = donationRepo.findById(donorId)
+                    .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
+
+            RazorpayClient client = new RazorpayClient(keyId, keySecret);
+System.out.println("➡ startDay from donor = " + donor.getStartDay());
+if (donor.getStartDay() != null) {
+    System.out.println("➡ start_at timestamp = " + getNextStartDate(donor.getStartDay()));
+}
+            // Build addon item (paise)
+            JSONObject item = new JSONObject();
+            item.put("amount", 100);
+            // item.put("amount", amountRupees * 100);
+            item.put("currency", "INR");
+            item.put("name", "Monthly Donation");
+
+            JSONObject addon = new JSONObject();
+            addon.put("item", item);
+
+            JSONArray addons = new JSONArray();
+            addons.put(addon);
+
+            JSONObject options = new JSONObject();
+            options.put("plan_id", variablePlanId);
+            options.put("quantity", 1);
+            options.put("addons", addons);
+            options.put("total_count", totalCount);
+          if (donor.getStartDay() != null) {
+    long startAt = getNextStartDate(donor.getStartDay());   
+    options.put("start_at", startAt);            
+}
+          else System.out.println("startdate i snull");
+
+            JSONObject notes = new JSONObject();
+            notes.put("donorId", donorId);
+            options.put("notes", notes);
+
+            System.out.println("🔵 subscription request options: " + options.toString());
+            Subscription sub = client.subscriptions.create(options);
+            donor.setSubscriptionId(sub.get("id"));
+            donor.setSubscriptionStatus("CREATED");
+            donor.setMonthlyAmount((double) amountRupees);
+            donor.setReceiptType("SUBSCRIPTION");
+            donationRepo.save(donor);
+            Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "subscription_id", sub.get("id"),
+                    "keyId", keyId,
+                    "donorId", donor.getId(),
+                    "short_url", sub.toJson().optString("short_url")
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
 
 //     @PostMapping("/razorpay-webhook")
 //     public ResponseEntity<?> handleWebhook(@RequestBody String payload, @RequestHeader("X-Razorpay-Signature") String signature) {
