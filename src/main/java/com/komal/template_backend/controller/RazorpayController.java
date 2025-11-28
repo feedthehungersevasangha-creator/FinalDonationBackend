@@ -776,17 +776,21 @@ public ResponseEntity<?> createVariablePlan() {
         planDetails.put("period", "monthly");
         planDetails.put("interval", 1);
 
-        planDetails.put("item", new JSONObject()
-                .put("name", "Variable Donation Plan")
-                .put("amount", 100)  // ₹1 (minimum allowed)
-                .put("currency", "INR")
-        );
+        // Base plan must be >= ₹1
+        JSONObject item = new JSONObject();
+        item.put("name", "Variable Donation Plan");
+        item.put("amount", 100);      // ₹1
+        item.put("currency", "INR");
 
-        planDetails.put("notes", new JSONObject()
-                .put("variable_amount", true)   // ✅ REAL Razorpay flag
-        );
+        planDetails.put("item", item);
 
-        System.out.println("PLAN: " + planDetails.toString(2));
+        // THIS IS THE *ONLY* CORRECT WAY TO MARK VARIABLE PLAN
+        JSONObject notes = new JSONObject();
+        notes.put("variable_amount", true);   // boolean — NOT string
+
+        planDetails.put("notes", notes);
+
+        System.out.println("Request Plan JSON = " + planDetails.toString(2));
 
         com.razorpay.Plan plan = client.plans.create(planDetails);
 
@@ -796,12 +800,14 @@ public ResponseEntity<?> createVariablePlan() {
         ));
 
     } catch (Exception e) {
+        e.printStackTrace();
         return ResponseEntity.status(500).body(Map.of(
                 "success", false,
                 "message", e.getMessage()
         ));
     }
 }
+
 
 
     @PostMapping("/create-donor-record")
@@ -1328,6 +1334,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
 }
 
 }
+
 
 
 
