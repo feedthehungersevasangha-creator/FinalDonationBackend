@@ -773,7 +773,9 @@ public class RazorpayController {
         try {
             donor.setStatus("PENDING");
             donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-
+if (donor.getStartDay() != null) {
+            donor.setStartDay(donor.getStartDay()); // store user selected 5/10/15
+        }
             Donourentity saved = donationService.saveDonation(donor);
 
             return ResponseEntity.ok(Map.of("success", true, "donorId", saved.getId()));
@@ -799,6 +801,10 @@ public class RazorpayController {
 
             System.out.println("🔵 create-subscription called: donorId=" + donorId + " amount=" + amountRupees);
             System.out.println("🔵 Using plan_id=" + variablePlanId + " key=" + keyId);
+System.out.println("➡ startDay from donor = " + donor.getStartDay());
+if (donor.getStartDay() != null) {
+    System.out.println("➡ start_at timestamp = " + getNextStartDate(donor.getStartDay()));
+}
 
             Donourentity donor = donationRepo.findById(donorId)
                     .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
@@ -822,6 +828,10 @@ public class RazorpayController {
             options.put("total_count", totalCount);
             options.put("quantity", 1);
             options.put("addons", addons);
+          if (donor.getStartDay() != null) {
+    long startAt = getNextStartDate(donor.getStartDay());
+    options.put("start_at", startAt);
+}
 
             JSONObject notes = new JSONObject();
             notes.put("donorId", donorId);
@@ -997,7 +1007,25 @@ public class RazorpayController {
             return ResponseEntity.status(500).body("Webhook error");
         }
     }
+  private long getNextStartDate(int startDay) {
+    LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+    LocalDateTime next;
+
+    int today = now.getDayOfMonth();
+
+    if (today < startDay) {
+        // this month
+        next = now.withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
+    } else {
+        // next month
+        next = now.plusMonths(1).withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
+    }
+
+    return next.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
 }
+
+}
+
 
 
 
