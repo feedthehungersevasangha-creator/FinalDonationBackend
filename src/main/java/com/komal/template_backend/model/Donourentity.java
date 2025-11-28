@@ -642,7 +642,11 @@ public class Donourentity {
     private String upiIdHash;
     private String payerEmailHash;
     private String payerContactHash;
+    private Integer startDay;
+
     // populate
+public Integer getStartDay() { return startDay; }
+public void setStartDay(Integer startDay) { this.startDay = startDay; }
 
     // Small helpers
     private boolean storedFromWebhook;      // mark if record was enriched from webhook (true/false)
