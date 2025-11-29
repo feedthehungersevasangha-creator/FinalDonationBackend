@@ -162,11 +162,11 @@ public class DonationController {
         return donationService.getAllDonors();
     }
 
-    // Filter donors by criteria
-    // @PostMapping("/filter")
-    // public List<Donourentity> filterDonors(@RequestBody Map<String, String> filters) {
-    //     return donorsFilteration.filterDonors(filters);
-    // }
+    Filter donors by criteria
+    @PostMapping("/filter")
+    public List<Donourentity> filterDonors(@RequestBody Map<String, String> filters) {
+        return donorsFilteration.filterDonors(filters);
+    }
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<?> deleteDonor(@PathVariable String id) {
         try {
