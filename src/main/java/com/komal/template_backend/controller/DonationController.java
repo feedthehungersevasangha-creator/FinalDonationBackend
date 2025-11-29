@@ -162,7 +162,7 @@ public class DonationController {
         return donationService.getAllDonors();
     }
 
-    Filter donors by criteria
+    // Filter donors by criteria
     @PostMapping("/filter")
     public List<Donourentity> filterDonors(@RequestBody Map<String, String> filters) {
         return donorsFilteration.filterDonors(filters);
