@@ -245,6 +245,19 @@ public class DonationController {
             return ResponseEntity.status(500).body("Failed to generate receipt: " + e.getMessage());
         }
     }
+//     @GetMapping("/donation-counts")
+// public ResponseEntity<?> getDonationCounts(
+//         @RequestParam(required = false) String from,
+//         @RequestParam(required = false) String to
+// ) {
+//     try {
+//         Map<String, Object> counts = donationService.getUniversalCounts(from, to);
+//         return ResponseEntity.ok(Map.of("success", true, "counts", counts));
+//     } catch (Exception e) {
+//         e.printStackTrace();
+//         return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
+//     }
+// }
     @GetMapping("/donation-counts")
 public ResponseEntity<?> getDonationCounts(
         @RequestParam(required = false) String from,
@@ -258,5 +271,6 @@ public ResponseEntity<?> getDonationCounts(
         return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
     }
 }
+
 
 }
