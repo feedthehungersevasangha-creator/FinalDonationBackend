@@ -231,37 +231,55 @@
 //         return v == null ? "-" : v;
 //     }
 // }
-public byte[] generateOneTimeDonationReceipt(Donourentity d, String paymentId, double amount) throws Exception {
+package com.komal.template_backend.service;
 
-    try (PDDocument doc = new PDDocument()) {
+import com.komal.template_backend.model.Donourentity;
+import org.apache.pdfbox.pdmodel.*;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.springframework.stereotype.Service;
 
-        PDType0Font font = loadUnicodeFont(doc);
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
-        PDPage page = new PDPage(PDRectangle.A4);
-        doc.addPage(page);
+@Service
+public class PdfReceiptServic {
 
-        PDPageContentStream cs = new PDPageContentStream(doc, page);
+    private final String logoResource = "/logo.png";
+    private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a");
+
+    // ----------- FONT LOADER -----------
+    private PDType0Font loadUnicodeFont(PDDocument doc) throws Exception {
+        InputStream fontStream = getClass().getResourceAsStream("/NotoSans-Regular.ttf");
+        if (fontStream == null) {
+            throw new RuntimeException("Unicode font missing: NotoSans-Regular.ttf");
+        }
+        return PDType0Font.load(doc, fontStream);
+    }
+
+    // ----------- HEADER BLOCK (used by all receipts) -----------
+    private float drawHeader(PDDocument doc, PDPageContentStream cs, PDType0Font font, float y) throws Exception {
+
         float margin = 40;
-        float y = page.getMediaBox().getHeight() - margin;
 
-        // -----------------------------
-        //  HEADER WITH LOGO + ORG INFO
-        // -----------------------------
-
+        // Logo
         InputStream logoStream = getClass().getResourceAsStream(logoResource);
         if (logoStream != null) {
             PDImageXObject logo = PDImageXObject.createFromByteArray(doc, logoStream.readAllBytes(), "logo");
             cs.drawImage(logo, margin, y - 80, 80, 80);
         }
 
-        // Org name
+        // Org Name
         cs.beginText();
         cs.setFont(font, 16);
         cs.newLineAtOffset(margin + 100, y - 25);
         cs.showText("Feed The Hunger Seva Sangha R");
         cs.endText();
 
-        // Address / Contact (edit these if needed)
+        // Address
         cs.beginText();
         cs.setFont(font, 10);
         cs.newLineAtOffset(margin + 100, y - 45);
@@ -270,73 +288,13 @@ public byte[] generateOneTimeDonationReceipt(Donourentity d, String paymentId, d
         cs.showText("Phone: 918884260100   Email: feedthehunger.india2025@gmail.com");
         cs.endText();
 
-        // -----------------------------
-        //  RECEIPT INFO BLOCK
-        // -----------------------------
-        y -= 120;
+        return y - 120;
+    }
 
-        cs.beginText();
-        cs.setFont(font, 12);
-        cs.newLineAtOffset(margin, y);
+    // ----------- FOOTER BOX -----------
+    private void drawFooterBox(PDPageContentStream cs, PDType0Font font, float margin, PDPage page) throws Exception {
 
-        cs.showText("Receipt No: " + safe(d.getReceiptNo()));
-        cs.newLineAtOffset(0, -16);
-
-        cs.showText("Financial Year: 2024-25");
-        cs.newLineAtOffset(0, -16);
-
-        cs.showText("Date of Print: " + java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
-        cs.endText();
-
-        // -----------------------------
-        //  DONOR "TO" BLOCK
-        // -----------------------------
-        y -= 70;
-
-        cs.beginText();
-        cs.setFont(font, 12);
-        cs.newLineAtOffset(margin, y);
-
-        cs.showText("To");
-        cs.newLineAtOffset(0, -18);
-
-        cs.showText(safe(d.getFirstName()) + " " + safe(d.getLastName()));
-        cs.newLineAtOffset(0, -16);
-
-        cs.showText(safe(d.getAddress()));
-        cs.newLineAtOffset(0, -16);
-
-        cs.showText("Phone: " + safe(d.getMobile()));
-
-        cs.endText();
-
-        // -----------------------------
-        //  DONATION DETAILS
-        // -----------------------------
-        y -= 110;
-
-        cs.beginText();
-        cs.setFont(font, 12);
-        cs.newLineAtOffset(margin, y);
-
-        cs.showText("Donor ID: " + safe(d.getDonorId()));
-        cs.newLineAtOffset(0, -16);
-
-        cs.showText("Received with Thanks from: " + safe(d.getFirstName()) + " " + safe(d.getLastName()));
-        cs.newLineAtOffset(0, -16);
-
-        cs.showText("A Sum of Rupees: INR " + String.format("%.2f", amount) + "/-");
-        cs.newLineAtOffset(0, -16);
-
-        // Example: 1-Apr-2024 to 31-Mar-2025
-        cs.showText("Period Of Contribution: " + safe(d.getPeriodFrom()) + "  to  " + safe(d.getPeriodTo()));
-
-        cs.endText();
-
-        // -----------------------------
-        //  FOOTER LEGAL BOX
-        // -----------------------------
-        float boxY = 100;
+        float boxY = 90;
         float boxHeight = 60;
 
         cs.addRect(margin, boxY, page.getMediaBox().getWidth() - margin * 2, boxHeight);
@@ -346,19 +304,208 @@ public byte[] generateOneTimeDonationReceipt(Donourentity d, String paymentId, d
         cs.setFont(font, 9);
         cs.newLineAtOffset(margin + 10, boxY + boxHeight - 20);
 
-        cs.showText("Registered as Public Charitable Trust No. 616. Donations made to the Trust are eligible");
+        cs.showText("Registered as Public Charitable Trust No. 616. Donations made to the Trust");
         cs.newLineAtOffset(0, -12);
-        cs.showText("for exemption under section 80G of the Income Tax Act 1961.");
+        cs.showText("are eligible for exemption under section 80G of the Income Tax Act 1961.");
         cs.newLineAtOffset(0, -12);
         cs.showText("PAN: AAATG3353R");
 
         cs.endText();
+    }
 
-        cs.close();
+    // ================================================================
+    // 1) ONE-TIME DONATION RECEIPT (GREENPEACE FORMAT)
+    // ================================================================
+    public byte[] generateOneTimeDonationReceipt(Donourentity d, String paymentId, double amount) throws Exception {
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        doc.save(baos);
-        return baos.toByteArray();
+        try (PDDocument doc = new PDDocument()) {
+
+            PDType0Font font = loadUnicodeFont(doc);
+            PDPage page = new PDPage(PDRectangle.A4);
+            doc.addPage(page);
+
+            PDPageContentStream cs = new PDPageContentStream(doc, page);
+            float margin = 40;
+
+            // HEADER
+            float y = drawHeader(doc, cs, font, page.getMediaBox().getHeight() - margin);
+
+            // RECEIPT INFO
+            cs.beginText();
+            cs.setFont(font, 12);
+            cs.newLineAtOffset(margin, y);
+
+            cs.showText("Receipt No: " + safe(d.getReceiptNo()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Financial Year: 2024-25");
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Date of Print: " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
+
+            cs.endText();
+
+            // "TO" BLOCK
+            y -= 80;
+
+            cs.beginText();
+            cs.setFont(font, 12);
+            cs.newLineAtOffset(margin, y);
+
+            cs.showText("To");
+            cs.newLineAtOffset(0, -18);
+            cs.showText(safe(d.getFirstName()) + " " + safe(d.getLastName()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText(safe(d.getAddress()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Phone: " + safe(d.getMobile()));
+
+            cs.endText();
+
+            // DONATION DETAILS
+            y -= 110;
+
+            cs.beginText();
+            cs.setFont(font, 12);
+            cs.newLineAtOffset(margin, y);
+
+            cs.showText("Donor ID: " + safe(d.getDonorId()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Received with Thanks from: " + safe(d.getFirstName()) + " " + safe(d.getLastName()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("A Sum of Rupees: INR " + String.format("%.2f", amount) + "/-");
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Payment ID: " + safe(paymentId));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Order ID: " + safe(d.getOrderId()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Date: " + dtf.format(d.getDonationDate()));
+
+            cs.endText();
+
+            // FOOTER
+            drawFooterBox(cs, font, margin, page);
+
+            cs.close();
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            doc.save(baos);
+            return baos.toByteArray();
+        }
+    }
+
+    // ================================================================
+    // 2) MANDATE REGISTRATION RECEIPT (GREENPEACE FORMAT)
+    // ================================================================
+    public byte[] generateMandateConfirmation(Donourentity d) throws Exception {
+
+        try (PDDocument doc = new PDDocument()) {
+
+            PDType0Font font = loadUnicodeFont(doc);
+            PDPage page = new PDPage(PDRectangle.A4);
+            doc.addPage(page);
+
+            PDPageContentStream cs = new PDPageContentStream(doc, page);
+            float margin = 40;
+
+            // HEADER
+            float y = drawHeader(doc, cs, font, page.getMediaBox().getHeight() - margin);
+
+            // TITLE BLOCK
+            cs.beginText();
+            cs.setFont(font, 16);
+            cs.newLineAtOffset(margin, y - 10);
+            cs.showText("Mandate Registration Confirmation");
+            cs.endText();
+
+            y -= 70;
+
+            // DETAILS
+            cs.beginText();
+            cs.setFont(font, 12);
+            cs.newLineAtOffset(margin, y);
+
+            cs.showText("Donor ID: " + safe(d.getDonorId()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Donor: " + safe(d.getFirstName()) + " " + safe(d.getLastName()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Subscription ID: " + safe(d.getSubscriptionId()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Mandate ID: " + safe(d.getMandateId()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Mandate Status: " + safe(d.getMandateStatus()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Monthly Amount: INR " + safe(String.valueOf(d.getMonthlyAmount())));
+
+            cs.endText();
+
+            // FOOTER
+            drawFooterBox(cs, font, margin, page);
+
+            cs.close();
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            doc.save(baos);
+            return baos.toByteArray();
+        }
+    }
+
+    // ================================================================
+    // 3) MONTHLY DEBIT RECEIPT (GREENPEACE FORMAT)
+    // ================================================================
+    public byte[] generateMonthlyDebitReceipt(Donourentity d, String paymentId, double amount) throws Exception {
+
+        try (PDDocument doc = new PDDocument()) {
+
+            PDType0Font font = loadUnicodeFont(doc);
+            PDPage page = new PDPage(PDRectangle.A4);
+            doc.addPage(page);
+
+            PDPageContentStream cs = new PDPageContentStream(doc, page);
+            float margin = 40;
+
+            // HEADER
+            float y = drawHeader(doc, cs, font, page.getMediaBox().getHeight() - margin);
+
+            // TITLE
+            cs.beginText();
+            cs.setFont(font, 16);
+            cs.newLineAtOffset(margin, y - 10);
+            cs.showText("Monthly Donation Receipt");
+            cs.endText();
+
+            y -= 70;
+
+            // DETAILS
+            cs.beginText();
+            cs.setFont(font, 12);
+            cs.newLineAtOffset(margin, y);
+
+            cs.showText("Donor ID: " + safe(d.getDonorId()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Donor: " + safe(d.getFirstName()) + " " + safe(d.getLastName()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Subscription ID: " + safe(d.getSubscriptionId()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Payment ID: " + safe(paymentId));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Amount Debited: INR " + String.format("%.2f", amount));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Date: " + dtf.format(d.getDonationDate()));
+
+            cs.endText();
+
+            // FOOTER
+            drawFooterBox(cs, font, margin, page);
+
+            cs.close();
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            doc.save(baos);
+            return baos.toByteArray();
+        }
+    }
+
+    private String safe(String v) {
+        return v == null ? "-" : v;
     }
 }
 
