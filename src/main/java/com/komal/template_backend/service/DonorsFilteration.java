@@ -55,7 +55,7 @@ public class DonorsFilteration {
                 // Donation info
                 .filter(d -> matchesIgnoreCaseTrimmed(d.getPaymentMode(), params.get("paymentMode")))
                 .filter(d -> matchesIgnoreCaseTrimmed(d.getFrequency(), params.get("frequency")))
-                .filter(d -> matchesIgnoreCaseTrimmed(d.getIdType(), params.get("idType"))
+                .filter(d -> matchesIgnoreCaseTrimmed(d.getIdType(), params.get("idType")))
                 .filter(d -> matchesIgnoreCaseTrimmed(d.getWallet(), params.get("wallet")))
                 .filter(d -> matchesIgnoreCaseTrimmed(d.getUpiId(), params.get("upiId")))
                 .filter(d -> matchesIgnoreCaseTrimmed(d.getPaymentMethod(), params.get("paymentMethod")))
