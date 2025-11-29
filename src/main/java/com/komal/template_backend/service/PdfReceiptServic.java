@@ -638,8 +638,6 @@ public class PdfReceiptServic {
             cs.newLineAtOffset(0, -18);
             cs.showText(safe(d.getFirstName()) + " " + safe(d.getLastName()));
             cs.newLineAtOffset(0, -16);
-            cs.showText(safe(d.getAddress()));
-            cs.newLineAtOffset(0, -16);
             cs.showText("Phone: " + safe(d.getMobile()));
 
             cs.endText();
