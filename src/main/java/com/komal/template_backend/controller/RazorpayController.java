@@ -951,13 +951,13 @@ if (donor.getStartDay() != null) {
             options.put("quantity", 1);
             options.put("addons", addons);
             options.put("total_count", totalCount);
-          options.put("charge_at", System.currentTimeMillis() / 1000);
+          // options.put("charge_at", System.currentTimeMillis() / 1000);
           if (donor.getStartDay() != null) {
     long startAt = getNextStartDate(donor.getStartDay());   
     options.put("start_at", startAt);            
 }
          else System.out.println("startdate i snull");
-            options.put("charge_at", System.currentTimeMillis() / 1000); 
+            // options.put("charge_at", System.currentTimeMillis() / 1000); 
 
             JSONObject notes = new JSONObject();
             notes.put("donorId", donorId);
@@ -1336,6 +1336,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
 }
 
 }
+
 
 
 
