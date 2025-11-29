@@ -698,16 +698,19 @@ public Map<String, Object> getCountsForRange(LocalDateTime from, LocalDateTime t
     );
     
 }
-
 public Map<String, Object> getUniversalCounts(String fromDate, String toDate) {
 
     final String SUCCESS = "SUCCESS";
     Map<String, Object> response = new HashMap<>();
 
     // ========== OVERALL ==========
-    response.put("total", donationRepo.countByStatus(SUCCESS));
-    response.put("oneTime", donationRepo.countByStatusAndSubscriptionIdIsNull(SUCCESS));
-    response.put("monthly", donationRepo.countByStatusAndSubscriptionIdIsNotNull(SUCCESS));
+    long total = donationRepo.countByStatus(SUCCESS);
+    long oneTime = donationRepo.countByStatusAndSubscriptionIdIsNull(SUCCESS);
+    long monthly = donationRepo.countByStatusAndSubscriptionIdIsNotNull(SUCCESS);
+
+    response.put("total", total);
+    response.put("oneTime", oneTime);
+    response.put("monthly", monthly);
 
     // ========== TODAY ==========
     LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
@@ -722,17 +725,62 @@ public Map<String, Object> getUniversalCounts(String fromDate, String toDate) {
 
     response.put("thisMonth", getCountsForRange(startMonth, endMonth));
 
-    // ========== CUSTOM RANGE (if provided) ==========
-    if (fromDate != null && toDate != null) {
+    // ========== CUSTOM RANGE ==========
+    if (fromDate != null && !fromDate.isBlank() && toDate != null && !toDate.isBlank()) {
+
+        // User selected dates → calculate range
         LocalDateTime from = parseDate(fromDate);
         LocalDateTime to = parseDate(toDate).plusDays(1);
+
         response.put("custom", getCountsForRange(from, to));
+
     } else {
-        response.put("custom", null);
+        // No range → return overall totals as custom
+        Map<String, Object> defaultCustom = new HashMap<>();
+        defaultCustom.put("total", total);
+        defaultCustom.put("oneTime", oneTime);
+        defaultCustom.put("monthly", monthly);
+
+        response.put("custom", defaultCustom);
     }
 
     return response;
 }
+
+// public Map<String, Object> getUniversalCounts(String fromDate, String toDate) {
+
+//     final String SUCCESS = "SUCCESS";
+//     Map<String, Object> response = new HashMap<>();
+
+//     // ========== OVERALL ==========
+//     response.put("total", donationRepo.countByStatus(SUCCESS));
+//     response.put("oneTime", donationRepo.countByStatusAndSubscriptionIdIsNull(SUCCESS));
+//     response.put("monthly", donationRepo.countByStatusAndSubscriptionIdIsNotNull(SUCCESS));
+
+//     // ========== TODAY ==========
+//     LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+//     LocalDateTime startToday = today.atStartOfDay();
+//     LocalDateTime endToday = startToday.plusDays(1);
+
+//     response.put("today", getCountsForRange(startToday, endToday));
+
+//     // ========== THIS MONTH ==========
+//     LocalDateTime startMonth = today.withDayOfMonth(1).atStartOfDay();
+//     LocalDateTime endMonth = startMonth.plusMonths(1);
+
+//     response.put("thisMonth", getCountsForRange(startMonth, endMonth));
+
+//     // ========== CUSTOM RANGE (if provided) ==========
+//     if (fromDate != null && toDate != null) {
+//         LocalDateTime from = parseDate(fromDate);
+//         LocalDateTime to = parseDate(toDate).plusDays(1);
+//         response.put("custom", getCountsForRange(from, to));
+//     } else {
+//         response.put("custom", null);
+//     }
+
+//     return response;
+// }
 
 }
 
