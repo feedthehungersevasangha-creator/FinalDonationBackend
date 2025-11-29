@@ -767,46 +767,46 @@ public class RazorpayController {
         }
         return hexString.toString();
     }
-@GetMapping("/create-variable-plan")
-public ResponseEntity<?> createVariablePlan() {
-    try {
-        RazorpayClient client = new RazorpayClient(keyId, keySecret);
+// @GetMapping("/create-variable-plan")
+// public ResponseEntity<?> createVariablePlan() {
+//     try {
+//         RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
-        JSONObject planDetails = new JSONObject();
-        planDetails.put("period", "monthly");
-        planDetails.put("interval", 1);
+//         JSONObject planDetails = new JSONObject();
+//         planDetails.put("period", "monthly");
+//         planDetails.put("interval", 1);
 
-        // Base plan must be >= ₹1
-        JSONObject item = new JSONObject();
-        item.put("name", "Variable Donation Plan");
-        item.put("amount", 100);      // ₹1
-        item.put("currency", "INR");
+//         // Base plan must be >= ₹1
+//         JSONObject item = new JSONObject();
+//         item.put("name", "Variable Donation Plan");
+//         item.put("amount", 100);      // ₹1
+//         item.put("currency", "INR");
 
-        planDetails.put("item", item);
+//         planDetails.put("item", item);
 
-        // THIS IS THE *ONLY* CORRECT WAY TO MARK VARIABLE PLAN
-        JSONObject notes = new JSONObject();
-        notes.put("variable_amount", true);   // boolean — NOT string
+//         // THIS IS THE *ONLY* CORRECT WAY TO MARK VARIABLE PLAN
+//         JSONObject notes = new JSONObject();
+//         notes.put("variable_amount", true);   // boolean — NOT string
 
-        planDetails.put("notes", notes);
+//         planDetails.put("notes", notes);
 
-        System.out.println("Request Plan JSON = " + planDetails.toString(2));
+//         System.out.println("Request Plan JSON = " + planDetails.toString(2));
 
-        com.razorpay.Plan plan = client.plans.create(planDetails);
+//         com.razorpay.Plan plan = client.plans.create(planDetails);
 
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "plan_id", plan.get("id")
-        ));
+//         return ResponseEntity.ok(Map.of(
+//                 "success", true,
+//                 "plan_id", plan.get("id")
+//         ));
 
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500).body(Map.of(
-                "success", false,
-                "message", e.getMessage()
-        ));
-    }
-}
+//     } catch (Exception e) {
+//         e.printStackTrace();
+//         return ResponseEntity.status(500).body(Map.of(
+//                 "success", false,
+//                 "message", e.getMessage()
+//         ));
+//     }
+// }
 
 
 
@@ -935,7 +935,7 @@ if (donor.getStartDay() != null) {
 }
             // Build addon item (paise)
             JSONObject item = new JSONObject();
-            item.put("amount", 100);
+            item.put("amount",amountRupees * 100);
             // item.put("amount", amountRupees * 100);
             item.put("currency", "INR");
             item.put("name", "Monthly Donation");
@@ -948,9 +948,10 @@ if (donor.getStartDay() != null) {
 
             JSONObject options = new JSONObject();
             options.put("plan_id", variablePlanId);
-            options.put("quantity", amountRupees);
+            options.put("quantity", 1);
             options.put("addons", addons);
             options.put("total_count", totalCount);
+          options.put("charge_at", System.currentTimeMillis() / 1000);
           if (donor.getStartDay() != null) {
     long startAt = getNextStartDate(donor.getStartDay());   
     options.put("start_at", startAt);            
@@ -960,6 +961,7 @@ if (donor.getStartDay() != null) {
 
             JSONObject notes = new JSONObject();
             notes.put("donorId", donorId);
+                  notes.put("monthlyAmount", String.valueOf(amountRupees));
             options.put("notes", notes);
 
             System.out.println("🔵 subscription request options: " + options.toString());
@@ -1334,6 +1336,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
 }
 
 }
+
 
 
 
