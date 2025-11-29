@@ -559,7 +559,7 @@ public class PdfReceiptServic {
         cs.beginText();
         cs.setFont(font, 16);
         cs.newLineAtOffset(margin + 100, y - 25);
-        cs.showText("Feed The Hunger Seva Sangha R");
+        cs.showText("Feed The Hunger Seva Sangha ");
         cs.endText();
 
         // Address + Contact
@@ -568,7 +568,7 @@ public class PdfReceiptServic {
         cs.newLineAtOffset(margin + 100, y - 45);
         cs.showText("SARJAPURA VILLAGE, SARJAPURA POST, BENGALURU, KARNATAKA - 562125");
         cs.newLineAtOffset(0, -14);
-        cs.showText("Phone: 918884260100   Email: feedthehunger.india2025@gmail.com");
+        cs.showText("Phone: 918884260100   Email: :supporter.services@feedthehungersevasangha.org");
         cs.endText();
 
         return y - 120; // next y position
