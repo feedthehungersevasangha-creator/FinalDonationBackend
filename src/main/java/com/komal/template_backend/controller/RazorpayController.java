@@ -1495,36 +1495,36 @@ if (donor.getStartDay() != null) {
             options.put("notes", notes);
 
             System.out.println("🔵 subscription request options: " + options.toString());
-            // Subscription sub = client.subscriptions.create(options);
-            // donor.setSubscriptionId(sub.get("id"));
-            // donor.setSubscriptionStatus("CREATED");
-            // donor.setMonthlyAmount((double) amountRupees);
-            // donor.setReceiptType("SUBSCRIPTION");
-            // donationRepo.save(donor);
+            Subscription sub = client.subscriptions.create(options);
+            donor.setSubscriptionId(sub.get("id"));
+            donor.setSubscriptionStatus("CREATED");
+            donor.setMonthlyAmount((double) amountRupees);
+            donor.setReceiptType("SUBSCRIPTION");
+            donationRepo.save(donor);
           // THIS IS REQUIRED TO MAKE THE ENTRY APPEAR IN ADMIN DASHBOARD
-Donourentity subEntry = new Donourentity();
+// Donourentity subEntry = new Donourentity();
 
-subEntry.setFirstName(donor.getFirstName());
-subEntry.setLastName(donor.getLastName());
-subEntry.setEmail(donor.getEmail());
-subEntry.setPayerEmail(donor.getPayerEmail());
-subEntry.setPhone(donor.getPhone());
+// subEntry.setFirstName(donor.getFirstName());
+// subEntry.setLastName(donor.getLastName());
+// subEntry.setEmail(donor.getEmail());
+// subEntry.setPayerEmail(donor.getPayerEmail());
+// subEntry.setPhone(donor.getPhone());
 
-subEntry.setReceiptType("SUBSCRIPTION");
-subEntry.setSubscriptionId(sub.get("id"));
-subEntry.setSubscriptionStatus("CREATED");
+// subEntry.setReceiptType("SUBSCRIPTION");
+// subEntry.setSubscriptionId(sub.get("id"));
+// subEntry.setSubscriptionStatus("CREATED");
 
-subEntry.setMonthlyAmount((double) amountRupees);
-subEntry.setAmount((double) amountRupees);
+// subEntry.setMonthlyAmount((double) amountRupees);
+// subEntry.setAmount((double) amountRupees);
 
-subEntry.setPaymentMethod("E-Mandate");
-subEntry.setStatus("PENDING");
-subEntry.setMandateStatus("PENDING");
-subEntry.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+// subEntry.setPaymentMethod("E-Mandate");
+// subEntry.setStatus("PENDING");
+// subEntry.setMandateStatus("PENDING");
+// subEntry.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
 
-donationService.saveDonation(subEntry);
+// donationService.saveDonation(subEntry);
 
-System.out.println("✔ Subscription entry created in DB: " + subEntry.getId());
+// System.out.println("✔ Subscription entry created in DB: " + subEntry.getId());
 
             Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
             return ResponseEntity.ok(Map.of(
@@ -2235,6 +2235,7 @@ public ResponseEntity<?> handleWebhook(@RequestBody String payload,
  
 
 }
+
 
 
 
