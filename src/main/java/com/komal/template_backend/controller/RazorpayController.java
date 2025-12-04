@@ -1617,7 +1617,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
         subscriptionRequest.put("plan_id", plan.get("id"));
         subscriptionRequest.put("customer_notify", 1);
       System.out.println("Subscription yeasrs"+subscriptionYears);
-        subscriptionRequest.put("total_count", subscriptionYears );
+        subscriptionRequest.put("total_count", subscriptionYears * 12 );
         // ONLY the ₹1 auth addon here — do NOT add starterAmount as addon
         subscriptionRequest.put("addons", List.of(authAddon));
         subscriptionRequest.put("notes", notes);
@@ -1899,6 +1899,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
         }
     }
 }
+
 
 
 
