@@ -2326,7 +2326,6 @@ import com.razorpay.Plan;
 import com.razorpay.RazorpayClient;
 import com.razorpay.Subscription;
 import com.razorpay.Utils;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -2337,8 +2336,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/payment")
@@ -2368,14 +2366,16 @@ public class RazorpayController {
     @Autowired
     private DonationRepo donationRepo;
 
-    // ================= ONE‑TIME ORDER =================
+    // --------------------------------------------------------------------
+    // ONE-TIME ORDER CREATION
+    // --------------------------------------------------------------------
 
     @PostMapping("/create-order")
     public ResponseEntity<?> createOrder(@RequestBody Donourentity donor) {
         try {
             RazorpayClient client = new RazorpayClient(keyId, keySecret);
             JSONObject options = new JSONObject();
-            options.put("amount", donor.getAmount() * 100);   // paise
+            options.put("amount", donor.getAmount() * 100);
             options.put("currency", "INR");
             options.put("receipt", "receipt_" + System.currentTimeMillis());
             options.put("payment_capture", 1);
@@ -2394,22 +2394,22 @@ public class RazorpayController {
                     "donorId", saved.getId(),
                     "amount", donor.getAmount() * 100,
                     "currency", "INR",
-                    "keyId", keyId,
-                    "message", "Order created successfully"
+                    "keyId", keyId
             ));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500)
-                    .body(Map.of("success", false, "message", "Server error: " + e.getMessage()));
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
-    // ================= ONE‑TIME VERIFY =================
+    // --------------------------------------------------------------------
+    // ONE-TIME PAYMENT VERIFY
+    // --------------------------------------------------------------------
 
     @PostMapping("/verify")
     public ResponseEntity<?> verifyPayment(@RequestBody Map<String, Object> body) {
         try {
-            System.out.println("🟡 Received /verify payload: " + body);
 
             String razorpayOrderId = (String) body.get("razorpay_order_id");
             String razorpayPaymentId = (String) body.get("razorpay_payment_id");
@@ -2418,7 +2418,7 @@ public class RazorpayController {
             if (razorpayOrderId == null || razorpayPaymentId == null || razorpaySignature == null) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "success", false,
-                        "message", "Missing one or more required fields"
+                        "message", "Missing required fields"
                 ));
             }
 
@@ -2437,13 +2437,12 @@ public class RazorpayController {
             JSONObject paymentJson = payment.toJson();
 
             String status = paymentJson.optString("status", "UNKNOWN");
-            String method = paymentJson.optString("method", "UNKNOWN");
-            String bank = paymentJson.optString("bank", "");
-            String vpa = paymentJson.optString("vpa", "");
             int amount = paymentJson.optInt("amount", 0);
-            String currency = paymentJson.optString("currency", "");
             String payerEmail = paymentJson.optString("email", "");
             String payerContact = paymentJson.optString("contact", "");
+            String method = paymentJson.optString("method", "");
+            String bank = paymentJson.optString("bank", "");
+            String vpa = paymentJson.optString("vpa", "");
             String wallet = paymentJson.optString("wallet", "");
 
             Optional<Donourentity> donorOpt = donationRepo.findByOrderId(razorpayOrderId);
@@ -2453,7 +2452,6 @@ public class RazorpayController {
                 donor.setPaymentId(razorpayPaymentId);
                 donor.setSignature(razorpaySignature);
                 donor.setStatus(status.equalsIgnoreCase("captured") ? "SUCCESS" : status.toUpperCase());
-
                 donor.setPaymentMethod(method);
                 donor.setUpiId(vpa);
                 donor.setWallet(wallet);
@@ -2463,30 +2461,19 @@ public class RazorpayController {
                 donor.setAmount(amount / 100.0);
                 donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
 
-                Donourentity saved = donationService.saveDonation(donor);
+                donationService.saveDonation(donor);
 
                 try {
-                    Donourentity decrypted = donationService.findByIdDecrypt(saved.getId());
+                    Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
                     if (decrypted != null) {
-                        byte[] pdf;
-                        if ("onetime".equalsIgnoreCase(decrypted.getFrequency())) {
-                            pdf = pdfReceiptService.generateOneTimeDonationReceipt(
-                                    decrypted,
-                                    decrypted.getPaymentId(),
-                                    decrypted.getAmount()
-                            );
-                        } else if (decrypted.getSubscriptionId() != null && decrypted.getPaymentId() == null) {
-                            pdf = pdfReceiptService.generateMandateConfirmation(decrypted);
-                        } else {
-                            pdf = pdfReceiptService.generateMonthlyDebitReceipt(
-                                    decrypted,
-                                    decrypted.getPaymentId(),
-                                    decrypted.getAmount()
-                            );
-                        }
+                        byte[] pdf = pdfReceiptService.generateOneTimeDonationReceipt(
+                                decrypted,
+                                decrypted.getPaymentId(),
+                                decrypted.getAmount()
+                        );
 
-                        String recipient = (decrypted.getPayerEmail() != null
-                                && !decrypted.getPayerEmail().isBlank())
+                        String recipient = (decrypted.getPayerEmail() != null &&
+                                !decrypted.getPayerEmail().isBlank())
                                 ? decrypted.getPayerEmail()
                                 : decrypted.getEmail();
 
@@ -2497,11 +2484,7 @@ public class RazorpayController {
                                     decrypted.getAmount(),
                                     decrypted.getPaymentId(),
                                     pdf,
-                                    "DonationReceipt_" +
-                                            (decrypted.getPaymentId() != null
-                                                    ? decrypted.getPaymentId()
-                                                    : decrypted.getId()) +
-                                            ".pdf"
+                                    "DonationReceipt_" + decrypted.getPaymentId() + ".pdf"
                             );
                         }
                     }
@@ -2513,63 +2496,54 @@ public class RazorpayController {
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "status", status,
-                    "method", method,
-                    "amount", amount / 100.0,
-                    "currency", currency
+                    "amount", amount / 100.0
             ));
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body(Map.of(
-                    "success", false,
-                    "message", "Server error: " + e.getMessage()
-            ));
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
-    // ================= COMMON HMAC =================
+    // --------------------------------------------------------------------
+    // HMAC UTILITY
+    // --------------------------------------------------------------------
 
     private String hmacSha256(String data, String secret) throws Exception {
         Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
-        SecretKeySpec secret_key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
-        sha256_HMAC.init(secret_key);
+        SecretKeySpec key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
+        sha256_HMAC.init(key);
         byte[] hash = sha256_HMAC.doFinal(data.getBytes());
 
-        StringBuilder hexString = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         for (byte b : hash) {
             String hex = Integer.toHexString(0xff & b);
-            if (hex.length() == 1) hexString.append('0');
-            hexString.append(hex);
+            if (hex.length() == 1) sb.append('0');
+            sb.append(hex);
         }
-        return hexString.toString();
+        return sb.toString();
     }
 
-    // ================= SUBSCRIPTION: CREATE DONOR =================
+    // --------------------------------------------------------------------
+    // CREATE DONOR (SUBSCRIPTION)
+    // --------------------------------------------------------------------
 
     @PostMapping("/create-donor-record")
     public ResponseEntity<?> createDonor(@RequestBody Donourentity donor) {
-        System.out.println("\n\n====================== 📌 CREATE DONOR RECORD ======================");
-        System.out.println("👉 Input Donor: " + donor);
-
         try {
             donor.setStatus("PENDING");
             donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
             Donourentity saved = donationService.saveDonation(donor);
             return ResponseEntity.ok(Map.of("success", true, "donorId", saved.getId()));
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
         }
     }
-
-    // ============ helper for safe int parsing ============
 
     private int parseIntSafe(Object o, int fallback) {
         try {
             if (o == null) return fallback;
             if (o instanceof Number) return ((Number) o).intValue();
             String s = String.valueOf(o).trim();
-            if (s.isEmpty()) return fallback;
-            return Integer.parseInt(s);
+            return s.isEmpty() ? fallback : Integer.parseInt(s);
         } catch (Exception ex) {
             return fallback;
         }
@@ -2578,115 +2552,127 @@ public class RazorpayController {
     private long getNextStartDate(int startDay) {
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
         LocalDateTime next;
+
         int today = now.getDayOfMonth();
         if (today < startDay) {
             next = now.withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
         } else {
             next = now.plusMonths(1).withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
         }
+
         return next.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
     }
 
+    // --------------------------------------------------------------------
+    // SUBSCRIPTION CREATE (CLEAN VERSION)
+    // --------------------------------------------------------------------
+
     @PostMapping("/create-subscription")
-public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
-    System.out.println("
+    public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+        System.out.println("====================== CREATE SUBSCRIPTION START ======================");
+        System.out.println("Received: " + req);
 
-====================== 🔵 CREATE SUBSCRIPTION START ======================");
-    System.out.println("👉 Received: " + req);
+        try {
+            String donorId = String.valueOf(req.get("donorId"));
+            int amount = parseIntSafe(req.get("amount"), 0);
 
-    try {
-        String donorId = String.valueOf(req.get("donorId"));
-        int amount = parseIntSafe(req.get("amount"), 0);
-        if (amount <= 0) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid amount"));
+            if (amount <= 0) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid amount"));
+            }
+
+            int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
+            if (starterAmount < 1 || starterAmount > 28) {
+                starterAmount = 10;
+            }
+
+            Donourentity donor = donationRepo.findById(donorId)
+                    .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
+
+            RazorpayClient client = new RazorpayClient(keyId, keySecret);
+
+            // -------- PLAN REQUEST USING MAPS ONLY --------
+
+            Map<String, Object> item = Map.of(
+                    "name", "Monthly Donation",
+                    "amount", amount * 100,
+                    "currency", "INR"
+            );
+
+            Map<String, Object> planRequest = Map.of(
+                    "period", "monthly",
+                    "interval", 1,
+                    "item", item
+            );
+
+            Plan plan = client.plans.create(new JSONObject(planRequest));
+
+            donor.setPlanId(plan.get("id"));
+            donationRepo.save(donor);
+
+            // -------- SUBSCRIPTION REQUEST --------
+
+            Map<String, Object> addon1 = Map.of(
+                    "item", Map.of(
+                            "name", "Auth 1 Rupee",
+                            "amount", 100,
+                            "currency", "INR"
+                    )
+            );
+
+            Map<String, Object> addon2 = Map.of(
+                    "item", Map.of(
+                            "name", "First Debit",
+                            "amount", starterAmount * 100,
+                            "currency", "INR"
+                    )
+            );
+
+            Map<String, Object> notes = Map.of(
+                    "donorId", donorId,
+                    "monthlyAmount", String.valueOf(amount)
+            );
+
+            Map<String, Object> subscriptionRequest = new HashMap<>();
+            subscriptionRequest.put("plan_id", plan.get("id"));
+            subscriptionRequest.put("customer_notify", 1);
+            subscriptionRequest.put("total_count", subscriptionYears * 12);
+            subscriptionRequest.put("addons", List.of(addon1, addon2));
+            subscriptionRequest.put("notes", notes);
+
+            if (donor.getStartDay() != null) {
+                subscriptionRequest.put("start_at", getNextStartDate(donor.getStartDay()));
+            }
+
+            Subscription subscription = client.subscriptions.create(new JSONObject(subscriptionRequest));
+
+            donor.setSubscriptionId(subscription.get("id"));
+            donor.setSubscriptionStatus("CREATED");
+            donor.setMonthlyAmount((double) amount);
+            donor.setStartDay(starterAmount);
+            donationRepo.save(donor);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "subscription_id", subscription.get("id"),
+                    "plan_id", plan.get("id"),
+                    "keyId", keyId
+            ));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500)
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
-
-        int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
-        if (starterAmount < 1 || starterAmount > 28) starterAmount = 10;
-
-        Donourentity donor = donationRepo.findById(donorId)
-                .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
-
-        RazorpayClient client = new RazorpayClient(keyId, keySecret);
-
-        // ---------- CREATE PLAN WITHOUT JSONObject (Fix Compilation) ----------
-        Map<String, Object> item = Map.of(
-                "name", "Monthly Donation",
-                "amount", amount * 100,
-                "currency", "INR"
-        );
-
-        Map<String, Object> planRequest = Map.of(
-                "period", "monthly",
-                "interval", 1,
-                "item", item
-        );
-
-        Plan plan = client.plans.create(new org.json.JSONObject(planRequest));
-        donor.setPlanId(plan.get("id"));
-        donationRepo.save(donor);
-
-        // ---------- CREATE SUBSCRIPTION (Using Only Maps) ----------
-        Map<String, Object> addon1 = Map.of(
-                "item", Map.of(
-                        "name", "Auth ₹1",
-                        "amount", 100,
-                        "currency", "INR"
-                )
-        );
-
-        Map<String, Object> addon2 = Map.of(
-                "item", Map.of(
-                        "name", "First Debit",
-                        "amount", starterAmount * 100,
-                        "currency", "INR"
-                )
-        );
-
-        Map<String, Object> notes = Map.of(
-                "donorId", donorId,
-                "monthlyAmount", String.valueOf(amount)
-        );
-
-        Map<String, Object> subscriptionRequest = new java.util.HashMap<>();
-        subscriptionRequest.put("plan_id", plan.get("id"));
-        subscriptionRequest.put("customer_notify", 1);
-        subscriptionRequest.put("total_count", subscriptionYears * 12);
-        subscriptionRequest.put("addons", java.util.List.of(addon1, addon2));
-        subscriptionRequest.put("notes", notes);
-
-        if (donor.getStartDay() != null) {
-            subscriptionRequest.put("start_at", getNextStartDate(donor.getStartDay()));
-        }
-
-        Subscription subscription = client.subscriptions.create(new org.json.JSONObject(subscriptionRequest));
-
-        donor.setSubscriptionId(subscription.get("id"));
-        donor.setSubscriptionStatus("CREATED");
-        donor.setMonthlyAmount((double) amount);
-        donor.setStartDay(starterAmount);
-        donationRepo.save(donor);
-
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "subscription_id", subscription.get("id"),
-                "plan_id", plan.get("id"),
-                "keyId", keyId
-        ));
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500)
-                .body(Map.of("success", false, "message", e.getMessage()));
     }
-}
 
-// ================= SUBSCRIPTION: VERIFY CHECKOUT =================
+    // --------------------------------------------------------------------
+    // SUBSCRIPTION VERIFY
+    // --------------------------------------------------------------------
 
     @PostMapping("/verify-subscription")
     public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
-        System.out.println("\n\n====================== 🔐 VERIFY SUBSCRIPTION ======================");
-        System.out.println("👉 Received: " + req);
+        System.out.println("====================== VERIFY SUBSCRIPTION ======================");
+        System.out.println("Received: " + req);
 
         try {
             String subId = (String) req.get("razorpay_subscription_id");
@@ -2694,19 +2680,17 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
             String sig = (String) req.get("razorpay_signature");
 
             if (subId == null || payId == null || sig == null) {
-                return ResponseEntity.badRequest().body("Missing");
+                return ResponseEntity.badRequest().body("Missing required fields");
             }
 
             String payload = subId + "|" + payId;
             String generatedSig = hmacSha256(payload, keySecret);
 
             if (!generatedSig.equals(sig)) {
-                return ResponseEntity.badRequest().body("Invalid");
+                return ResponseEntity.badRequest().body("Invalid signature");
             }
 
-            Donourentity donor =
-                    donationRepo.findBySubscriptionId(subId).orElse(null);
-
+            Donourentity donor = donationRepo.findBySubscriptionId(subId).orElse(null);
             if (donor != null) {
                 donor.setPaymentId(payId);
                 donor.setSubscriptionStatus("ACTIVE");
@@ -2714,21 +2698,22 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
             }
 
             return ResponseEntity.ok(Map.of("success", true));
+
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.status(500).body("error");
         }
     }
 
-    // ================= WEBHOOK =================
+    // --------------------------------------------------------------------
+    // WEBHOOK HANDLER
+    // --------------------------------------------------------------------
 
     @PostMapping("/razorpay-webhook")
     public ResponseEntity<?> webhook(@RequestBody String payload,
                                      @RequestHeader("X-Razorpay-Signature") String signature) {
 
-        System.out.println("\n\n====================== 🔔 WEBHOOK RECEIVED ======================");
-        System.out.println("👉 Payload:\n" + payload);
-        System.out.println("👉 Signature = " + signature);
+        System.out.println("====================== WEBHOOK RECEIVED ======================");
+        System.out.println(payload);
 
         try {
             boolean valid = Utils.verifyWebhookSignature(payload, signature, webhookSecret);
@@ -2739,6 +2724,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
             JSONObject json = new JSONObject(payload);
             String event = json.optString("event");
 
+            // Mandate authorized
             if ("mandate.authorized".equals(event)) {
                 JSONObject m = json.getJSONObject("payload")
                         .getJSONObject("mandate")
@@ -2755,12 +2741,14 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
                 }
             }
 
+            // Subscription activated
             if ("subscription.activated".equals(event)) {
                 JSONObject sub = json.getJSONObject("payload")
                         .getJSONObject("subscription")
                         .getJSONObject("entity");
 
                 String subscriptionId = sub.getString("id");
+
                 Donourentity donor = donationRepo.findBySubscriptionId(subscriptionId).orElse(null);
                 if (donor != null) {
                     donor.setSubscriptionStatus("ACTIVE");
@@ -2768,6 +2756,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
                 }
             }
 
+            // Subscription charged (monthly debit)
             if ("subscription.charged".equals(event)) {
                 JSONObject p = json.getJSONObject("payload")
                         .getJSONObject("payment")
@@ -2783,8 +2772,6 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
                     monthly.setFirstName(donor.getFirstName());
                     monthly.setLastName(donor.getLastName());
                     monthly.setEmail(donor.getEmail());
-                    monthly.setPayerEmail(donor.getPayerEmail());
-                    monthly.setPayerContact(donor.getPayerContact());
                     monthly.setAmount(amountPaid);
                     monthly.setSubscriptionId(subscriptionId);
                     monthly.setPaymentId(paymentId);
@@ -2795,12 +2782,14 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
             }
 
             return ResponseEntity.ok("OK");
+
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.status(500).body("error");
         }
     }
 }
+
+
 
 
 
