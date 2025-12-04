@@ -1403,94 +1403,196 @@ public class RazorpayController {
     // ===========================================================
     // 2️⃣ CREATE SUBSCRIPTION (MANDATE)
     // ===========================================================
-    @PostMapping("/create-subscription")
-    public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+    // @PostMapping("/create-subscription")
+    // public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
 
-        System.out.println("\n\n====================== 🔵 CREATE SUBSCRIPTION START ======================");
-        System.out.println("👉 Received: " + req);
+    //     System.out.println("\n\n====================== 🔵 CREATE SUBSCRIPTION START ======================");
+    //     System.out.println("👉 Received: " + req);
 
-        try {
+    //     try {
 
-            int donorId = (String) req.get("donorId");
-            int amount = (Integer) req.get("amount"); // rupees
-            int authAmount = 1; // ₹1 mandate auth
-            int smallDebit = req.get("starterAmount") == null ? 10 : (Integer) req.get("starterAmount");
+    //         int donorId = (String) req.get("donorId");
+    //         int amount = (Integer) req.get("amount"); // rupees
+    //         int authAmount = 1; // ₹1 mandate auth
+    //         int smallDebit = req.get("starterAmount") == null ? 10 : (Integer) req.get("starterAmount");
 
-            System.out.println("🔵 DonorId=" + donorId + ", MonthlyAmount=" + amount + ", FirstDebit=" + smallDebit);
+    //         System.out.println("🔵 DonorId=" + donorId + ", MonthlyAmount=" + amount + ", FirstDebit=" + smallDebit);
 
-            Donourentity donor = donationRepo.findById(donorId)
-                    .orElseThrow(() -> new RuntimeException("Donor not found"));
+    //         Donourentity donor = donationRepo.findById(donorId)
+    //                 .orElseThrow(() -> new RuntimeException("Donor not found"));
 
-            RazorpayClient client = new RazorpayClient(keyId, keySecret);
+    //         RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
-            // ---------- CREATE PLAN ----------
-            JSONObject planJson = new JSONObject();
-            planJson.put("period", "monthly");
-            planJson.put("interval", 1);
+    //         // ---------- CREATE PLAN ----------
+    //         JSONObject planJson = new JSONObject();
+    //         planJson.put("period", "monthly");
+    //         planJson.put("interval", 1);
 
-            JSONObject item = new JSONObject();
-            item.put("name", "Monthly Donation");
-            item.put("amount", amount * 100);
-            item.put("currency", "INR");
+    //         JSONObject item = new JSONObject();
+    //         item.put("name", "Monthly Donation");
+    //         item.put("amount", amount * 100);
+    //         item.put("currency", "INR");
 
-            planJson.put("item", item);
+    //         planJson.put("item", item);
 
-            System.out.println("📦 Plan Payload: " + planJson.toString(2));
-            Plan plan = client.plans.create(planJson);
-            System.out.println("🟢 Plan Created: " + plan.get("id"));
+    //         System.out.println("📦 Plan Payload: " + planJson.toString(2));
+    //         Plan plan = client.plans.create(planJson);
+    //         System.out.println("🟢 Plan Created: " + plan.get("id"));
 
 
-            // ---------- CREATE SUBSCRIPTION ----------
-            JSONObject subJson = new JSONObject();
-            subJson.put("plan_id", plan.get("id"));
-            subJson.put("customer_notify", 1);
-            subJson.put("total_count", 120);
+    //         // ---------- CREATE SUBSCRIPTION ----------
+    //         JSONObject subJson = new JSONObject();
+    //         subJson.put("plan_id", plan.get("id"));
+    //         subJson.put("customer_notify", 1);
+    //         subJson.put("total_count", 120);
 
-            JSONArray addons = new JSONArray();
+    //         JSONArray addons = new JSONArray();
 
-            // ₹1 MANDATE AUTH
-            JSONObject addon1 = new JSONObject();
-            JSONObject addon1Item = new JSONObject();
-            addon1Item.put("name", "Auth ₹1");
-            addon1Item.put("amount", authAmount * 100);
-            addon1Item.put("currency", "INR");
-            addon1.put("item", addon1Item);
-            addons.put(addon1);
+    //         // ₹1 MANDATE AUTH
+    //         JSONObject addon1 = new JSONObject();
+    //         JSONObject addon1Item = new JSONObject();
+    //         addon1Item.put("name", "Auth ₹1");
+    //         addon1Item.put("amount", authAmount * 100);
+    //         addon1Item.put("currency", "INR");
+    //         addon1.put("item", addon1Item);
+    //         addons.put(addon1);
 
-            // FIRST SMALL DEBIT
-            JSONObject addon2 = new JSONObject();
-            JSONObject addon2Item = new JSONObject();
-            addon2Item.put("name", "First Debit");
-            addon2Item.put("amount", smallDebit * 100);
-            addon2Item.put("currency", "INR");
-            addon2.put("item", addon2Item);
-            addons.put(addon2);
+    //         // FIRST SMALL DEBIT
+    //         JSONObject addon2 = new JSONObject();
+    //         JSONObject addon2Item = new JSONObject();
+    //         addon2Item.put("name", "First Debit");
+    //         addon2Item.put("amount", smallDebit * 100);
+    //         addon2Item.put("currency", "INR");
+    //         addon2.put("item", addon2Item);
+    //         addons.put(addon2);
 
-            subJson.put("addons", addons);
+    //         subJson.put("addons", addons);
 
-            System.out.println("📦 Subscription Payload: " + subJson.toString(2));
-            Subscription subscription = client.subscriptions.create(subJson);
+    //         System.out.println("📦 Subscription Payload: " + subJson.toString(2));
+    //         Subscription subscription = client.subscriptions.create(subJson);
 
-            System.out.println("🟢 Subscription Created: " + subscription.get("id"));
+    //         System.out.println("🟢 Subscription Created: " + subscription.get("id"));
 
-            donor.setSubscriptionId(subscription.get("id"));
-            donor.setSubscriptionStatus("CREATED");
-            donationRepo.save(donor);
+    //         donor.setSubscriptionId(subscription.get("id"));
+    //         donor.setSubscriptionStatus("CREATED");
+    //         donationRepo.save(donor);
 
-            System.out.println("====================== 🟢 CREATE SUBSCRIPTION COMPLETE ======================\n");
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "subscription_id", subscription.get("id"),
-                    "keyId", keyId
-            ));
+    //         System.out.println("====================== 🟢 CREATE SUBSCRIPTION COMPLETE ======================\n");
+    //         return ResponseEntity.ok(Map.of(
+    //                 "success", true,
+    //                 "subscription_id", subscription.get("id"),
+    //                 "keyId", keyId
+    //         ));
 
-        } catch (Exception e) {
-            System.err.println("❌ SUBSCRIPTION ERROR: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(500).body(Map.of("success", false));
-        }
+    //     } catch (Exception e) {
+    //         System.err.println("❌ SUBSCRIPTION ERROR: " + e.getMessage());
+    //         e.printStackTrace();
+    //         return ResponseEntity.status(500).body(Map.of("success", false));
+    //     }
+    // }
+
+@PostMapping("/create-subscription")
+public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+
+    System.out.println("\n\n====================== 🔵 CREATE SUBSCRIPTION START ======================");
+    System.out.println("👉 Received: " + req);
+
+    try {
+        // donorId must be String (your entity uses String ID)
+        String donorId = (String) req.get("donorId");
+
+        int amount = (Integer) req.get("amount"); 
+        int authAmount = 1;
+        int starterAmount = req.get("starterAmount") == null
+                ? 10
+                : (Integer) req.get("starterAmount");
+
+        System.out.println("🔵 donorId=" + donorId 
+                + ", MonthlyAmount=" + amount 
+                + ", FirstDebit=" + starterAmount);
+
+        Donourentity donor = donationRepo.findById(donorId)
+                .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
+
+        RazorpayClient client = new RazorpayClient(keyId, keySecret);
+
+        // ---------------- CREATE PLAN ----------------
+        JSONObject planJson = new JSONObject();
+        planJson.put("period", "monthly");
+        planJson.put("interval", 1);
+
+        JSONObject item = new JSONObject();
+        item.put("name", "Monthly Donation");
+        item.put("amount", amount * 100);
+        item.put("currency", "INR");
+
+        planJson.put("item", item);
+
+        System.out.println("📦 Plan Payload: " + planJson.toString(2));
+
+        Plan plan = client.plans.create(planJson);
+
+        System.out.println("🟢 Plan Created: " + plan.get("id"));
+
+        donor.setPlanId(plan.get("id"));
+        donationRepo.save(donor);
+
+        // ---------------- CREATE SUBSCRIPTION ----------------
+        JSONObject subJson = new JSONObject();
+        subJson.put("plan_id", plan.get("id"));
+        subJson.put("customer_notify", 1);
+        subJson.put("total_count", 120);
+
+        JSONArray addons = new JSONArray();
+
+        // ₹1 auth
+        JSONObject addon1 = new JSONObject();
+        JSONObject addon1Item = new JSONObject();
+        addon1Item.put("name", "Auth ₹1");
+        addon1Item.put("amount", authAmount * 100);
+        addon1Item.put("currency", "INR");
+        addon1.put("item", addon1Item);
+        addons.put(addon1);
+
+        // First debit
+        JSONObject addon2 = new JSONObject();
+        JSONObject addon2Item = new JSONObject();
+        addon2Item.put("name", "First Debit");
+        addon2Item.put("amount", starterAmount * 100);
+        addon2Item.put("currency", "INR");
+        addon2.put("item", addon2Item);
+        addons.put(addon2);
+
+        // FIX ambiguous put()
+        subJson.put("addons", (Object) addons);
+
+        System.out.println("📦 Subscription Payload: " + subJson.toString(2));
+
+        Subscription subscription = client.subscriptions.create(subJson);
+
+        System.out.println("🟢 Subscription Created: " + subscription.get("id"));
+
+        donor.setSubscriptionId(subscription.get("id"));
+        donor.setSubscriptionStatus("CREATED");
+        donor.setMonthlyAmount((double) amount);
+        donor.setStartDay(starterAmount);
+        donationRepo.save(donor);
+
+        System.out.println("====================== 🟢 CREATE SUBSCRIPTION COMPLETE ======================\n");
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "subscription_id", subscription.get("id"),
+                "plan_id", plan.get("id"),
+                "keyId", keyId
+        ));
+
+    } catch (Exception e) {
+        System.err.println("❌ SUBSCRIPTION ERROR: " + e.getMessage());
+        e.printStackTrace();
+        return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
     }
-
+}
 
 
     // ===========================================================
@@ -1668,6 +1770,7 @@ public class RazorpayController {
  
 
 }
+
 
 
 
