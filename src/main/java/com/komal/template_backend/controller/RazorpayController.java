@@ -1140,8 +1140,8 @@ public class RazorpayController {
     private String keyId;
     @Value("${razorpay.key_secret}")
     private String keySecret;
-    @Value("${razorpay.variable_plan_id}")
-    private String variablePlanId;
+    // @Value("${razorpay.variable_plan_id}")
+    // private String variablePlanId;
     @Value("${razorpay.webhook_secret}")
     private String webhookSecret ;
     @Value("${razorpay.subscription_years:40}")
@@ -1668,6 +1668,7 @@ public class RazorpayController {
  
 
 }
+
 
 
 
