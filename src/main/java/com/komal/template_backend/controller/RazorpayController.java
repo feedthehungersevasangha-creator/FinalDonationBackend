@@ -1400,20 +1400,36 @@ public class RazorpayController {
     // HMAC UTILITY
     // --------------------------------------------------------------------
 
-    private String hmacSha256(String data, String secret) throws Exception {
-        Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
-        SecretKeySpec key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
-        sha256_HMAC.init(key);
-        byte[] hash = sha256_HMAC.doFinal(data.getBytes());
+    // private String hmacSha256(String data, String secret) throws Exception {
+    //     Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
+    //     SecretKeySpec key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
+    //     sha256_HMAC.init(key);
+    //     byte[] hash = sha256_HMAC.doFinal(data.getBytes());
 
-        StringBuilder sb = new StringBuilder();
-        for (byte b : hash) {
-            String hex = Integer.toHexString(0xff & b);
-            if (hex.length() == 1) sb.append('0');
-            sb.append(hex);
-        }
-        return sb.toString();
+    //     StringBuilder sb = new StringBuilder();
+    //     for (byte b : hash) {
+    //         String hex = Integer.toHexString(0xff & b);
+    //         if (hex.length() == 1) sb.append('0');
+    //         sb.append(hex);
+    //     }
+    //     return sb.toString();
+    // }
+    private String hmacSha256(String data, String secret) throws Exception {
+    Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
+    SecretKeySpec secretKey = new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256");
+    sha256_HMAC.init(secretKey);
+    byte[] hash = sha256_HMAC.doFinal(data.getBytes("UTF-8"));
+    return Base64.getEncoder().encodeToString(hash);
+}
+private boolean verifyWebhook(String payload, String headerSignature) {
+    try {
+        String expected = hmacSha256(payload, webhookSecret);
+        return expected.equals(headerSignature);
+    } catch (Exception e) {
+        return false;
     }
+}
+
 
     // --------------------------------------------------------------------
     // CREATE DONOR (SUBSCRIPTION)
@@ -1823,6 +1839,7 @@ public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req
         }
     }
 }
+
 
 
 
