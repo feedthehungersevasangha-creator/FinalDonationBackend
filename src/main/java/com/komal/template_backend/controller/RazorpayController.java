@@ -1490,26 +1490,40 @@ public class RazorpayController {
     //         return ResponseEntity.status(500).body(Map.of("success", false));
     //     }
     // }
-
+  private int parseIntSafe(Object o, int fallback) {
+    try {
+        if (o == null) return fallback;
+        if (o instanceof Number) return ((Number) o).intValue();
+        String s = String.valueOf(o).trim();
+        if (s.isEmpty()) return fallback;
+        return Integer.parseInt(s);
+    } catch (Exception ex) {
+        return fallback;
+    }
+}
 @PostMapping("/create-subscription")
 public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
-
     System.out.println("\n\n====================== 🔵 CREATE SUBSCRIPTION START ======================");
     System.out.println("👉 Received: " + req);
 
     try {
-        // donorId must be String (your entity uses String ID)
-        String donorId = (String) req.get("donorId");
+        // ----- robust parsing helpers -----
+        String donorId = String.valueOf(req.get("donorId"));
+        int amount = parseIntSafe(req.get("amount"), 0); // rupees
+        if (amount <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid amount"));
+        }
 
-        int amount = (Integer) req.get("amount"); 
-        int authAmount = 1;
-        int starterAmount = req.get("starterAmount") == null
-                ? 10
-                : (Integer) req.get("starterAmount");
+        int authAmount = 1; // ₹1 mandate auth
+        int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
 
-        System.out.println("🔵 donorId=" + donorId 
-                + ", MonthlyAmount=" + amount 
-                + ", FirstDebit=" + starterAmount);
+        // Sanitize starterAmount (prefer 1..28 for monthly start day)
+        if (starterAmount < 1 || starterAmount > 28) {
+            System.out.println("⚠️ invalid starterAmount " + starterAmount + " -> using 10");
+            starterAmount = 10;
+        }
+
+        System.out.println("🔵 donorId=" + donorId + ", MonthlyAmount=" + amount + ", FirstDebit=" + starterAmount);
 
         Donourentity donor = donationRepo.findById(donorId)
                 .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
@@ -1523,15 +1537,13 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
 
         JSONObject item = new JSONObject();
         item.put("name", "Monthly Donation");
-        item.put("amount", amount * 100);
+        item.put("amount", amount * 100);   // paise
         item.put("currency", "INR");
 
         planJson.put("item", item);
 
         System.out.println("📦 Plan Payload: " + planJson.toString(2));
-
         Plan plan = client.plans.create(planJson);
-
         System.out.println("🟢 Plan Created: " + plan.get("id"));
 
         donor.setPlanId(plan.get("id"));
@@ -1541,7 +1553,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
         JSONObject subJson = new JSONObject();
         subJson.put("plan_id", plan.get("id"));
         subJson.put("customer_notify", 1);
-        subJson.put("total_count", 120);
+        subJson.put("total_count", subscriptionYears * 12);
 
         JSONArray addons = new JSONArray();
 
@@ -1563,13 +1575,24 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
         addon2.put("item", addon2Item);
         addons.put(addon2);
 
-        // FIX ambiguous put()
+        // avoid ambiguous JSONObject.put overload
         subJson.put("addons", (Object) addons);
+
+        // set optional start_at if donor has requested a day
+        if (donor.getStartDay() != null) {
+            long startAt = getNextStartDate(donor.getStartDay());
+            subJson.put("start_at", startAt);
+            System.out.println("➡ Subscription start_at set to epoch: " + startAt);
+        }
+
+        JSONObject notes = new JSONObject();
+        notes.put("donorId", donorId);
+        notes.put("monthlyAmount", String.valueOf(amount));
+        subJson.put("notes", notes);
 
         System.out.println("📦 Subscription Payload: " + subJson.toString(2));
 
         Subscription subscription = client.subscriptions.create(subJson);
-
         System.out.println("🟢 Subscription Created: " + subscription.get("id"));
 
         donor.setSubscriptionId(subscription.get("id"));
@@ -1593,6 +1616,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
         return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
     }
 }
+
 
 
     // ===========================================================
@@ -1770,6 +1794,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
  
 
 }
+
 
 
 
