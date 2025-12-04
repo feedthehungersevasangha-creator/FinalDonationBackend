@@ -2351,7 +2351,7 @@ public class RazorpayController {
     @Value("${razorpay.webhook_secret}")
     private String webhookSecret;
 
-    @Value("${razorpay.subscription_years}")
+    @Value("${razorpay.subscription_years:40}")
     private int subscriptionYears;
 
     @Autowired
@@ -2664,211 +2664,85 @@ public class RazorpayController {
     //                 .body(Map.of("success", false, "message", e.getMessage()));
     //     }
     // }
-// @PostMapping("/create-subscription")
-// public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
-//     System.out.println("====================== CREATE SUBSCRIPTION START ======================");
-//     System.out.println("Received: " + req);
-
-//     try {
-//         String donorId = String.valueOf(req.get("donorId"));
-//         int amount = parseIntSafe(req.get("amount"), 0);
-
-//         if (amount <= 0) {
-//             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid amount"));
-//         }
-
-//         // starterAmount is the day-of-month the user wants the first debit (or fallback)
-//         int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
-//         if (starterAmount < 1 || starterAmount > 28) {
-//             starterAmount = 10;
-//         }
-
-//         Donourentity donor = donationRepo.findById(donorId)
-//                 .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
-
-//         RazorpayClient client = new RazorpayClient(keyId, keySecret);
-
-//         // -------- PLAN REQUEST USING MAPS ONLY --------
-//         Map<String, Object> item = Map.of(
-//                 "name", "Monthly Donation",
-//                 "amount", amount * 100,   // paise
-//                 "currency", "INR"
-//         );
-
-//         Map<String, Object> planRequest = Map.of(
-//                 "period", "monthly",
-//                 "interval", 1,
-//                 "item", item
-//         );
-
-//         Plan plan = client.plans.create(new JSONObject(planRequest));
-//         donor.setPlanId(plan.get("id"));
-//         donationRepo.save(donor);
-
-//         // -------- SUBSCRIPTION REQUEST --------
-//         // Only include the ₹1 authorization addon.
-//         Map<String, Object> authAddon = Map.of(
-//                 "item", Map.of(
-//                         "name", "Mandate Authorization",
-//                         "amount", 100,            // ₹1 in paise
-//                         "currency", "INR"
-//                 )
-//         );
-
-//         Map<String, Object> notes = Map.of(
-//                 "donorId", donorId,
-//                 "monthlyAmount", String.valueOf(amount)
-//         );
-
-//         Map<String, Object> subscriptionRequest = new HashMap<>();
-//         subscriptionRequest.put("plan_id", plan.get("id"));
-//         subscriptionRequest.put("customer_notify", 1);
-//         subscriptionRequest.put("total_count", subscriptionYears * 12);
-//         // ONLY the ₹1 auth addon here — do NOT add starterAmount as addon
-//         subscriptionRequest.put("addons", List.of(authAddon));
-//         subscriptionRequest.put("notes", notes);
-
-//         // Set start_at so Razorpay charges the first real debit on that date.
-//         // If donor has a stored start day, use it; otherwise use the starterAmount provided in request.
-//         Integer useStartDay = donor.getStartDay() != null ? donor.getStartDay() : starterAmount;
-//         if (useStartDay != null) {
-//             subscriptionRequest.put("start_at", getNextStartDate(useStartDay));
-//         }
-
-//         System.out.println("📦 Subscription Payload: " + new JSONObject(subscriptionRequest).toString(2));
-
-//         Subscription subscription = client.subscriptions.create(new JSONObject(subscriptionRequest));
-
-//         donor.setSubscriptionId(subscription.get("id"));
-//         donor.setSubscriptionStatus("CREATED");
-//         donor.setMonthlyAmount((double) amount);
-//         donor.setStartDay(useStartDay);
-//         donationRepo.save(donor);
-
-//         return ResponseEntity.ok(Map.of(
-//                 "success", true,
-//                 "subscription_id", subscription.get("id"),
-//                 "plan_id", plan.get("id"),
-//                 "keyId", keyId
-//         ));
-
-//     } catch (Exception e) {
-//         e.printStackTrace();
-//         return ResponseEntity.status(500)
-//                 .body(Map.of("success", false, "message", e.getMessage()));
-//     }
-// }
-
-//     // --------------------------------------------------------------------
-//     // SUBSCRIPTION VERIFY
-//     // --------------------------------------------------------------------
-
-//     @PostMapping("/verify-subscription")
-//     public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
-//         System.out.println("====================== VERIFY SUBSCRIPTION ======================");
-//         System.out.println("Received: " + req);
-
-//         try {
-//             String subId = (String) req.get("razorpay_subscription_id");
-//             String payId = (String) req.get("razorpay_payment_id");
-//             String sig = (String) req.get("razorpay_signature");
-
-//             if (subId == null || payId == null || sig == null) {
-//                 return ResponseEntity.badRequest().body("Missing required fields");
-//             }
-
-//             String payload = subId + "|" + payId;
-//             String generatedSig = hmacSha256(payload, keySecret);
-
-//             if (!generatedSig.equals(sig)) {
-//                 return ResponseEntity.badRequest().body("Invalid signature");
-//             }
-
-//             Donourentity donor = donationRepo.findBySubscriptionId(subId).orElse(null);
-//             if (donor != null) {
-//                 donor.setPaymentId(payId);
-//                 donor.setSubscriptionStatus("ACTIVE");
-//                 donor.setStatus("Success");
-//                 donationRepo.save(donor);
-//             }
-
-//             return ResponseEntity.ok(Map.of("success", true));
-
-//         } catch (Exception e) {
-//             return ResponseEntity.status(500).body("error");
-//         }
-//     }
-  @PostMapping("/create-subscription")
+@PostMapping("/create-subscription")
 public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
-    System.out.println("\n====================== CREATE SUBSCRIPTION START ======================");
+    System.out.println("====================== CREATE SUBSCRIPTION START ======================");
     System.out.println("Received: " + req);
 
     try {
         String donorId = String.valueOf(req.get("donorId"));
         int amount = parseIntSafe(req.get("amount"), 0);
-        int starterDay = parseIntSafe(req.get("starterAmount"), 10);
 
         if (amount <= 0) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid amount"));
         }
-        if (starterDay < 1 || starterDay > 28) starterDay = 10;
+
+        // starterAmount is the day-of-month the user wants the first debit (or fallback)
+        int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
+        if (starterAmount < 1 || starterAmount > 28) {
+            starterAmount = 10;
+        }
 
         Donourentity donor = donationRepo.findById(donorId)
                 .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
 
         RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
-        // ---------- PLAN ----------
+        // -------- PLAN REQUEST USING MAPS ONLY --------
         Map<String, Object> item = Map.of(
                 "name", "Monthly Donation",
-                "amount", amount * 100,
+                "amount", amount * 100,   // paise
                 "currency", "INR"
         );
 
-        Map<String, Object> planReq = Map.of(
+        Map<String, Object> planRequest = Map.of(
                 "period", "monthly",
                 "interval", 1,
                 "item", item
         );
 
-        Plan plan = client.plans.create(new JSONObject(planReq));
+        Plan plan = client.plans.create(new JSONObject(planRequest));
         donor.setPlanId(plan.get("id"));
         donationRepo.save(donor);
 
-        // ---------- ONLY ₹1 AUTH ADDON ----------
+        // -------- SUBSCRIPTION REQUEST --------
+        // Only include the ₹1 authorization addon.
         Map<String, Object> authAddon = Map.of(
                 "item", Map.of(
                         "name", "Mandate Authorization",
-                        "amount", 100,
+                        "amount", 100,            // ₹1 in paise
                         "currency", "INR"
                 )
         );
 
-        // ---------- NOTES ----------
         Map<String, Object> notes = Map.of(
                 "donorId", donorId,
                 "monthlyAmount", String.valueOf(amount)
         );
 
-        // ---------- SUBSCRIPTION REQUEST ----------
-        Map<String, Object> subscriptionReq = new HashMap<>();
-        subscriptionReq.put("plan_id", plan.get("id"));
-        subscriptionReq.put("customer_notify", 1);
-        subscriptionReq.put("total_count", subscriptionYears * 12);
-        subscriptionReq.put("addons", List.of(authAddon));
-        subscriptionReq.put("notes", notes);
+        Map<String, Object> subscriptionRequest = new HashMap<>();
+        subscriptionRequest.put("plan_id", plan.get("id"));
+        subscriptionRequest.put("customer_notify", 1);
+        subscriptionRequest.put("total_count", subscriptionYears * 12);
+        // ONLY the ₹1 auth addon here — do NOT add starterAmount as addon
+        subscriptionRequest.put("addons", List.of(authAddon));
+        subscriptionRequest.put("notes", notes);
 
-        int useDay = donor.getStartDay() != null ? donor.getStartDay() : starterDay;
-        subscriptionReq.put("start_at", getNextStartDate(useDay));
+        // Set start_at so Razorpay charges the first real debit on that date.
+        // If donor has a stored start day, use it; otherwise use the starterAmount provided in request.
+        Integer useStartDay = donor.getStartDay() != null ? donor.getStartDay() : starterAmount;
+        if (useStartDay != null) {
+            subscriptionRequest.put("start_at", getNextStartDate(useStartDay));
+        }
 
-        System.out.println("📦 Subscription Payload:\n" + new JSONObject(subscriptionReq).toString(2));
+        System.out.println("📦 Subscription Payload: " + new JSONObject(subscriptionRequest).toString(2));
 
-        Subscription subscription = client.subscriptions.create(new JSONObject(subscriptionReq));
+        Subscription subscription = client.subscriptions.create(new JSONObject(subscriptionRequest));
 
         donor.setSubscriptionId(subscription.get("id"));
         donor.setSubscriptionStatus("CREATED");
         donor.setMonthlyAmount((double) amount);
-        donor.setStartDay(useDay);
+        donor.setStartDay(useStartDay);
         donationRepo.save(donor);
 
         return ResponseEntity.ok(Map.of(
@@ -2880,46 +2754,172 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
 
     } catch (Exception e) {
         e.printStackTrace();
-        return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
+        return ResponseEntity.status(500)
+                .body(Map.of("success", false, "message", e.getMessage()));
     }
 }
-@PostMapping("/verify-subscription")
-public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
-    System.out.println("====================== VERIFY SUBSCRIPTION ======================");
-    System.out.println("Received: " + req);
 
-    try {
-        String subId = (String) req.get("razorpay_subscription_id");
-        String payId = (String) req.get("razorpay_payment_id");   // AUTH payment ID
-        String sig = (String) req.get("razorpay_signature");
+//     // --------------------------------------------------------------------
+//     // SUBSCRIPTION VERIFY
+//     // --------------------------------------------------------------------
 
-        if (subId == null || payId == null || sig == null) {
-            return ResponseEntity.badRequest().body("Missing required fields");
+    @PostMapping("/verify-subscription")
+    public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
+        System.out.println("====================== VERIFY SUBSCRIPTION ======================");
+        System.out.println("Received: " + req);
+
+        try {
+            String subId = (String) req.get("razorpay_subscription_id");
+            String payId = (String) req.get("razorpay_payment_id");
+            String sig = (String) req.get("razorpay_signature");
+
+            if (subId == null || payId == null || sig == null) {
+                return ResponseEntity.badRequest().body("Missing required fields");
+            }
+
+            String payload = subId + "|" + payId;
+            String generatedSig = hmacSha256(payload, keySecret);
+
+            if (!generatedSig.equals(sig)) {
+                return ResponseEntity.badRequest().body("Invalid signature");
+            }
+
+            Donourentity donor = donationRepo.findBySubscriptionId(subId).orElse(null);
+            if (donor != null) {
+                donor.setPaymentId(payId);
+                donor.setSubscriptionStatus("ACTIVE");
+                donor.setStatus("Success");
+                donationRepo.save(donor);
+            }
+
+            return ResponseEntity.ok(Map.of("success", true));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("error");
         }
-
-        // SIGNATURE = HMAC(subId | payId)
-        String payload = subId + "|" + payId;
-        String expectedSignature = hmacSha256(payload, keySecret);
-
-        if (!expectedSignature.equals(sig)) {
-            System.out.println("❌ INVALID SIGNATURE\nExpected= " + expectedSignature + "\nGot= " + sig);
-            return ResponseEntity.status(400).body("Invalid signature");
-        }
-
-        Donourentity donor = donationRepo.findBySubscriptionId(subId).orElse(null);
-        if (donor != null) {
-            donor.setPaymentId(payId);
-            donor.setSubscriptionStatus("ACTIVE");
-            donor.setStatus("Success");
-            donationRepo.save(donor);
-        }
-
-        return ResponseEntity.ok(Map.of("success", true));
-
-    } catch (Exception e) {
-        return ResponseEntity.status(500).body("error");
     }
-}
+//   @PostMapping("/create-subscription")
+// public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+//     System.out.println("\n====================== CREATE SUBSCRIPTION START ======================");
+//     System.out.println("Received: " + req);
+
+//     try {
+//         String donorId = String.valueOf(req.get("donorId"));
+//         int amount = parseIntSafe(req.get("amount"), 0);
+//         int starterDay = parseIntSafe(req.get("starterAmount"), 10);
+
+//         if (amount <= 0) {
+//             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid amount"));
+//         }
+//         if (starterDay < 1 || starterDay > 28) starterDay = 10;
+
+//         Donourentity donor = donationRepo.findById(donorId)
+//                 .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
+
+//         RazorpayClient client = new RazorpayClient(keyId, keySecret);
+
+//         // ---------- PLAN ----------
+//         Map<String, Object> item = Map.of(
+//                 "name", "Monthly Donation",
+//                 "amount", amount * 100,
+//                 "currency", "INR"
+//         );
+
+//         Map<String, Object> planReq = Map.of(
+//                 "period", "monthly",
+//                 "interval", 1,
+//                 "item", item
+//         );
+
+//         Plan plan = client.plans.create(new JSONObject(planReq));
+//         donor.setPlanId(plan.get("id"));
+//         donationRepo.save(donor);
+
+//         // ---------- ONLY ₹1 AUTH ADDON ----------
+//         Map<String, Object> authAddon = Map.of(
+//                 "item", Map.of(
+//                         "name", "Mandate Authorization",
+//                         "amount", 100,
+//                         "currency", "INR"
+//                 )
+//         );
+
+//         // ---------- NOTES ----------
+//         Map<String, Object> notes = Map.of(
+//                 "donorId", donorId,
+//                 "monthlyAmount", String.valueOf(amount)
+//         );
+
+//         // ---------- SUBSCRIPTION REQUEST ----------
+//         Map<String, Object> subscriptionReq = new HashMap<>();
+//         subscriptionReq.put("plan_id", plan.get("id"));
+//         subscriptionReq.put("customer_notify", 1);
+//         subscriptionReq.put("total_count", subscriptionYears * 12);
+//         subscriptionReq.put("addons", List.of(authAddon));
+//         subscriptionReq.put("notes", notes);
+
+//         int useDay = donor.getStartDay() != null ? donor.getStartDay() : starterDay;
+//         subscriptionReq.put("start_at", getNextStartDate(useDay));
+
+//         System.out.println("📦 Subscription Payload:\n" + new JSONObject(subscriptionReq).toString(2));
+
+//         Subscription subscription = client.subscriptions.create(new JSONObject(subscriptionReq));
+
+//         donor.setSubscriptionId(subscription.get("id"));
+//         donor.setSubscriptionStatus("CREATED");
+//         donor.setMonthlyAmount((double) amount);
+//         donor.setStartDay(useDay);
+//         donationRepo.save(donor);
+
+//         return ResponseEntity.ok(Map.of(
+//                 "success", true,
+//                 "subscription_id", subscription.get("id"),
+//                 "plan_id", plan.get("id"),
+//                 "keyId", keyId
+//         ));
+
+//     } catch (Exception e) {
+//         e.printStackTrace();
+//         return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
+//     }
+// }
+// @PostMapping("/verify-subscription")
+// public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
+//     System.out.println("====================== VERIFY SUBSCRIPTION ======================");
+//     System.out.println("Received: " + req);
+
+//     try {
+//         String subId = (String) req.get("razorpay_subscription_id");
+//         String payId = (String) req.get("razorpay_payment_id");   // AUTH payment ID
+//         String sig = (String) req.get("razorpay_signature");
+
+//         if (subId == null || payId == null || sig == null) {
+//             return ResponseEntity.badRequest().body("Missing required fields");
+//         }
+
+//         // SIGNATURE = HMAC(subId | payId)
+//         String payload = subId + "|" + payId;
+//         String expectedSignature = hmacSha256(payload, keySecret);
+
+//         if (!expectedSignature.equals(sig)) {
+//             System.out.println("❌ INVALID SIGNATURE\nExpected= " + expectedSignature + "\nGot= " + sig);
+//             return ResponseEntity.status(400).body("Invalid signature");
+//         }
+
+//         Donourentity donor = donationRepo.findBySubscriptionId(subId).orElse(null);
+//         if (donor != null) {
+//             donor.setPaymentId(payId);
+//             donor.setSubscriptionStatus("ACTIVE");
+//             donor.setStatus("Success");
+//             donationRepo.save(donor);
+//         }
+
+//         return ResponseEntity.ok(Map.of("success", true));
+
+//     } catch (Exception e) {
+//         return ResponseEntity.status(500).body("error");
+//     }
+// }
 
 
     // --------------------------------------------------------------------
