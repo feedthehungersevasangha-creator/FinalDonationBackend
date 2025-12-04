@@ -1414,13 +1414,22 @@ public class RazorpayController {
     //     }
     //     return sb.toString();
     // }
-    private String hmacSha256(String data, String secret) throws Exception {
+    private String hmacSha256Hex(String data, String secret) throws Exception {
     Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
-    SecretKeySpec secretKey = new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256");
-    sha256_HMAC.init(secretKey);
+    SecretKeySpec key = new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256");
+    sha256_HMAC.init(key);
     byte[] hash = sha256_HMAC.doFinal(data.getBytes("UTF-8"));
-    return Base64.getEncoder().encodeToString(hash);
+
+    StringBuilder hex = new StringBuilder();
+    for (byte b : hash) {
+        String h = Integer.toHexString(0xff & b);
+        if (h.length() == 1) hex.append('0');
+        hex.append(h);
+    }
+    return hex.toString();
 }
+
+
 private boolean verifyWebhook(String payload, String headerSignature) {
     try {
         String expected = hmacSha256(payload, webhookSecret);
@@ -1839,6 +1848,7 @@ public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req
         }
     }
 }
+
 
 
 
