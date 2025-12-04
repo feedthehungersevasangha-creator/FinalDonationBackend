@@ -2135,7 +2135,8 @@ public class RazorpayController {
             addon2.put("item", addon2Item);
             addons.put(addon2);
 
-            subJson.put("addons", addons);
+            // subJson.put("addons", addons);
+          put("addons", (Object) addons)
 
             if (donor.getStartDay() != null) {
                 long startAt = getNextStartDate(donor.getStartDay());
@@ -2288,6 +2289,7 @@ public class RazorpayController {
         }
     }
 }
+
 
 
 
