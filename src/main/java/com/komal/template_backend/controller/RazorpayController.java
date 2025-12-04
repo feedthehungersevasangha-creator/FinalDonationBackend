@@ -1411,7 +1411,7 @@ public class RazorpayController {
 
         try {
 
-            int donorId = (Integer) req.get("donorId");
+            int donorId = (String) req.get("donorId");
             int amount = (Integer) req.get("amount"); // rupees
             int authAmount = 1; // ₹1 mandate auth
             int smallDebit = req.get("starterAmount") == null ? 10 : (Integer) req.get("starterAmount");
@@ -1668,6 +1668,7 @@ public class RazorpayController {
  
 
 }
+
 
 
 
