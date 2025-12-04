@@ -2351,7 +2351,7 @@ public class RazorpayController {
     @Value("${razorpay.webhook_secret}")
     private String webhookSecret;
 
-    @Value("${razorpay.subscription_years}")
+    @Value("${razorpay.subscription_years:30}")
     private int subscriptionYears;
 
     @Autowired
@@ -3005,6 +3005,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
         }
     }
 }
+
 
 
 
