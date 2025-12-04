@@ -2567,103 +2567,197 @@ public class RazorpayController {
     // SUBSCRIPTION CREATE (CLEAN VERSION)
     // --------------------------------------------------------------------
 
-    @PostMapping("/create-subscription")
-    public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
-        System.out.println("====================== CREATE SUBSCRIPTION START ======================");
-        System.out.println("Received: " + req);
+    // @PostMapping("/create-subscription")
+    // public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+    //     System.out.println("====================== CREATE SUBSCRIPTION START ======================");
+    //     System.out.println("Received: " + req);
 
-        try {
-            String donorId = String.valueOf(req.get("donorId"));
-            int amount = parseIntSafe(req.get("amount"), 0);
+    //     try {
+    //         String donorId = String.valueOf(req.get("donorId"));
+    //         int amount = parseIntSafe(req.get("amount"), 0);
 
-            if (amount <= 0) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid amount"));
-            }
+    //         if (amount <= 0) {
+    //             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid amount"));
+    //         }
 
-            int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
-            if (starterAmount < 1 || starterAmount > 28) {
-                starterAmount = 10;
-            }
+    //         int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
+    //         if (starterAmount < 1 || starterAmount > 28) {
+    //             starterAmount = 10;
+    //         }
 
-            Donourentity donor = donationRepo.findById(donorId)
-                    .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
+    //         Donourentity donor = donationRepo.findById(donorId)
+    //                 .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
 
-            RazorpayClient client = new RazorpayClient(keyId, keySecret);
+    //         RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
-            // -------- PLAN REQUEST USING MAPS ONLY --------
+    //         // -------- PLAN REQUEST USING MAPS ONLY --------
 
-            Map<String, Object> item = Map.of(
-                    "name", "Monthly Donation",
-                    "amount", amount * 100,
-                    "currency", "INR"
-            );
+    //         Map<String, Object> item = Map.of(
+    //                 "name", "Monthly Donation",
+    //                 "amount", amount * 100,
+    //                 "currency", "INR"
+    //         );
 
-            Map<String, Object> planRequest = Map.of(
-                    "period", "monthly",
-                    "interval", 1,
-                    "item", item
-            );
+    //         Map<String, Object> planRequest = Map.of(
+    //                 "period", "monthly",
+    //                 "interval", 1,
+    //                 "item", item
+    //         );
 
-            Plan plan = client.plans.create(new JSONObject(planRequest));
+    //         Plan plan = client.plans.create(new JSONObject(planRequest));
 
-            donor.setPlanId(plan.get("id"));
-            donationRepo.save(donor);
+    //         donor.setPlanId(plan.get("id"));
+    //         donationRepo.save(donor);
 
-            // -------- SUBSCRIPTION REQUEST --------
+    //         // -------- SUBSCRIPTION REQUEST --------
 
-            Map<String, Object> addon1 = Map.of(
-                    "item", Map.of(
-                            "name", "Auth 1 Rupee",
-                            "amount", 100,
-                            "currency", "INR"
-                    )
-            );
+    //         Map<String, Object> addon1 = Map.of(
+    //                 "item", Map.of(
+    //                         "name", "Auth 1 Rupee",
+    //                         "amount", 100,
+    //                         "currency", "INR"
+    //                 )
+    //         );
 
-            Map<String, Object> addon2 = Map.of(
-                    "item", Map.of(
-                            "name", "First Debit",
-                            "amount", starterAmount * 100,
-                            "currency", "INR"
-                    )
-            );
+    //         Map<String, Object> addon2 = Map.of(
+    //                 "item", Map.of(
+    //                         "name", "First Debit",
+    //                         "amount", starterAmount * 100,
+    //                         "currency", "INR"
+    //                 )
+    //         );
 
-            Map<String, Object> notes = Map.of(
-                    "donorId", donorId,
-                    "monthlyAmount", String.valueOf(amount)
-            );
+    //         Map<String, Object> notes = Map.of(
+    //                 "donorId", donorId,
+    //                 "monthlyAmount", String.valueOf(amount)
+    //         );
 
-            Map<String, Object> subscriptionRequest = new HashMap<>();
-            subscriptionRequest.put("plan_id", plan.get("id"));
-            subscriptionRequest.put("customer_notify", 1);
-            subscriptionRequest.put("total_count", subscriptionYears * 12);
-            subscriptionRequest.put("addons", List.of(addon1, addon2));
-            subscriptionRequest.put("notes", notes);
+    //         Map<String, Object> subscriptionRequest = new HashMap<>();
+    //         subscriptionRequest.put("plan_id", plan.get("id"));
+    //         subscriptionRequest.put("customer_notify", 1);
+    //         subscriptionRequest.put("total_count", subscriptionYears * 12);
+    //         subscriptionRequest.put("addons", List.of(addon1, addon2));
+    //         subscriptionRequest.put("notes", notes);
 
-            if (donor.getStartDay() != null) {
-                subscriptionRequest.put("start_at", getNextStartDate(donor.getStartDay()));
-            }
+    //         if (donor.getStartDay() != null) {
+    //             subscriptionRequest.put("start_at", getNextStartDate(donor.getStartDay()));
+    //         }
 
-            Subscription subscription = client.subscriptions.create(new JSONObject(subscriptionRequest));
+    //         Subscription subscription = client.subscriptions.create(new JSONObject(subscriptionRequest));
 
-            donor.setSubscriptionId(subscription.get("id"));
-            donor.setSubscriptionStatus("CREATED");
-            donor.setMonthlyAmount((double) amount);
-            donor.setStartDay(starterAmount);
-            donationRepo.save(donor);
+    //         donor.setSubscriptionId(subscription.get("id"));
+    //         donor.setSubscriptionStatus("CREATED");
+    //         donor.setMonthlyAmount((double) amount);
+    //         donor.setStartDay(starterAmount);
+    //         donationRepo.save(donor);
 
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "subscription_id", subscription.get("id"),
-                    "plan_id", plan.get("id"),
-                    "keyId", keyId
-            ));
+    //         return ResponseEntity.ok(Map.of(
+    //                 "success", true,
+    //                 "subscription_id", subscription.get("id"),
+    //                 "plan_id", plan.get("id"),
+    //                 "keyId", keyId
+    //         ));
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+    //     } catch (Exception e) {
+    //         e.printStackTrace();
+    //         return ResponseEntity.status(500)
+    //                 .body(Map.of("success", false, "message", e.getMessage()));
+    //     }
+    // }
+@PostMapping("/create-subscription")
+public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+    System.out.println("====================== CREATE SUBSCRIPTION START ======================");
+    System.out.println("Received: " + req);
+
+    try {
+        String donorId = String.valueOf(req.get("donorId"));
+        int amount = parseIntSafe(req.get("amount"), 0);
+
+        if (amount <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid amount"));
         }
+
+        // starterAmount is the day-of-month the user wants the first debit (or fallback)
+        int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
+        if (starterAmount < 1 || starterAmount > 28) {
+            starterAmount = 10;
+        }
+
+        Donourentity donor = donationRepo.findById(donorId)
+                .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
+
+        RazorpayClient client = new RazorpayClient(keyId, keySecret);
+
+        // -------- PLAN REQUEST USING MAPS ONLY --------
+        Map<String, Object> item = Map.of(
+                "name", "Monthly Donation",
+                "amount", amount * 100,   // paise
+                "currency", "INR"
+        );
+
+        Map<String, Object> planRequest = Map.of(
+                "period", "monthly",
+                "interval", 1,
+                "item", item
+        );
+
+        Plan plan = client.plans.create(new JSONObject(planRequest));
+        donor.setPlanId(plan.get("id"));
+        donationRepo.save(donor);
+
+        // -------- SUBSCRIPTION REQUEST --------
+        // Only include the ₹1 authorization addon.
+        Map<String, Object> authAddon = Map.of(
+                "item", Map.of(
+                        "name", "Mandate Authorization",
+                        "amount", 100,            // ₹1 in paise
+                        "currency", "INR"
+                )
+        );
+
+        Map<String, Object> notes = Map.of(
+                "donorId", donorId,
+                "monthlyAmount", String.valueOf(amount)
+        );
+
+        Map<String, Object> subscriptionRequest = new HashMap<>();
+        subscriptionRequest.put("plan_id", plan.get("id"));
+        subscriptionRequest.put("customer_notify", 1);
+        subscriptionRequest.put("total_count", subscriptionYears * 12);
+        // ONLY the ₹1 auth addon here — do NOT add starterAmount as addon
+        subscriptionRequest.put("addons", List.of(authAddon));
+        subscriptionRequest.put("notes", notes);
+
+        // Set start_at so Razorpay charges the first real debit on that date.
+        // If donor has a stored start day, use it; otherwise use the starterAmount provided in request.
+        Integer useStartDay = donor.getStartDay() != null ? donor.getStartDay() : starterAmount;
+        if (useStartDay != null) {
+            subscriptionRequest.put("start_at", getNextStartDate(useStartDay));
+        }
+
+        System.out.println("📦 Subscription Payload: " + new JSONObject(subscriptionRequest).toString(2));
+
+        Subscription subscription = client.subscriptions.create(new JSONObject(subscriptionRequest));
+
+        donor.setSubscriptionId(subscription.get("id"));
+        donor.setSubscriptionStatus("CREATED");
+        donor.setMonthlyAmount((double) amount);
+        donor.setStartDay(useStartDay);
+        donationRepo.save(donor);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "subscription_id", subscription.get("id"),
+                "plan_id", plan.get("id"),
+                "keyId", keyId
+        ));
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500)
+                .body(Map.of("success", false, "message", e.getMessage()));
     }
+}
 
     // --------------------------------------------------------------------
     // SUBSCRIPTION VERIFY
@@ -2788,6 +2882,7 @@ public class RazorpayController {
         }
     }
 }
+
 
 
 
