@@ -2788,6 +2788,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
             if (donor != null) {
                 donor.setPaymentId(payId);
                 donor.setSubscriptionStatus("ACTIVE");
+                donor.setStatus("Success");
                 donationRepo.save(donor);
             }
 
@@ -2870,7 +2871,6 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
                     monthly.setSubscriptionId(subscriptionId);
                     monthly.setPaymentId(paymentId);
                     monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-                    monthly.setStatus("SUCCESS");
                     donationService.saveDonation(monthly);
                 }
             }
@@ -2882,6 +2882,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
         }
     }
 }
+
 
 
 
