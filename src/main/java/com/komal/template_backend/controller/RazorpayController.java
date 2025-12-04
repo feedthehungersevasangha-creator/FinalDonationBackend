@@ -2588,126 +2588,100 @@ public class RazorpayController {
     }
 
     @PostMapping("/create-subscription")
-    public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+    System.out.println("
 
-        System.out.println("\n\n====================== 🔵 CREATE SUBSCRIPTION START ======================");
-        System.out.println("👉 Received: " + req);
+====================== 🔵 CREATE SUBSCRIPTION START ======================");
+    System.out.println("👉 Received: " + req);
 
-        try {
-            // Extract donorId & validate amount
-            String donorId = String.valueOf(req.get("donorId"));
-            int amount = parseIntSafe(req.get("amount"), 0);
-            if (amount <= 0) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "Invalid amount"));
-            }
-
-            int authAmount = 1; // ₹1 mandate charge
-            int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
-            if (starterAmount < 1 || starterAmount > 28) starterAmount = 10;
-
-            Donourentity donor = donationRepo.findById(donorId)
-                    .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
-
-            RazorpayClient client = new RazorpayClient(keyId, keySecret);
-
-            // ---------------------- CREATE PLAN ----------------------
-            JSONObject planJson = new JSONObject();
-            planJson.put("period", "monthly");
-            planJson.put("interval", 1);
-
-            JSONObject item = new JSONObject();
-            item.put("name", "Monthly Donation");
-            item.put("amount", amount * 100);
-            item.put("currency", "INR");
-
-            planJson.put("item", item);
-
-            System.out.println("📦 Plan Payload:\n" + planJson.toString(2));
-
-            Plan plan = client.plans.create(planJson);
-            donor.setPlanId(plan.get("id"));
-            donationRepo.save(donor);
-
-            System.out.println("🟢 Plan Created: " + plan.get("id"));
-
-            // ---------------------- CREATE SUBSCRIPTION ----------------------
-            JSONObject subJson = new JSONObject();
-            subJson.put("plan_id", plan.get("id"));
-            subJson.put("customer_notify", 1);
-            subJson.put("total_count", subscriptionYears * 12);
-
-            // ---------------------- ADDONS ARRAY ----------------------
-            JSONArray addons = new JSONArray();
-
-            // Addon #1: ₹1 Auth
-            JSONObject addon1Item = new JSONObject();
-            addon1Item.put("name", "Auth ₹1");
-            addon1Item.put("amount", authAmount * 100);
-            addon1Item.put("currency", "INR");
-
-            JSONObject addon1 = new JSONObject();
-            addon1.put("item", addon1Item);
-            addons.put(addon1);
-
-            // Addon #2: First Debit (₹starterAmount)
-            JSONObject addon2Item = new JSONObject();
-            addon2Item.put("name", "First Debit");
-            addon2Item.put("amount", starterAmount * 100);
-            addon2Item.put("currency", "INR");
-
-            JSONObject addon2 = new JSONObject();
-            addon2.put("item", addon2Item);
-            addons.put(addon2);
-
-            // FIX: Convert to plain List → No ambiguous .put()
-            subJson.put("addons", addons.toList());
-
-            // ---------------------- START DATE (optional) ----------------------
-            if (donor.getStartDay() != null) {
-                long startAt = getNextStartDate(donor.getStartDay());
-                subJson.put("start_at", startAt);
-            }
-
-            // ---------------------- NOTES FIXED ----------------------
-            JSONObject notes = new JSONObject();
-            notes.put("donorId", donorId);
-            notes.put("monthlyAmount", String.valueOf(amount));
-
-            // Avoid ambiguous put overload by using JSONObject directly
-            subJson.put("notes", notes);
-
-            System.out.println("📦 Subscription Payload:\n" + subJson.toString(2));
-
-            // Create subscription
-            Subscription subscription = client.subscriptions.create(subJson);
-
-            System.out.println("🟢 Subscription Created: " + subscription.get("id"));
-
-            // Save subscription info
-            donor.setSubscriptionId(subscription.get("id"));
-            donor.setSubscriptionStatus("CREATED");
-            donor.setMonthlyAmount((double) amount);
-            donor.setStartDay(starterAmount);
-            donationRepo.save(donor);
-
-            System.out.println("====================== 🟢 CREATE SUBSCRIPTION COMPLETE ======================\n");
-
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "subscription_id", subscription.get("id"),
-                    "plan_id", plan.get("id"),
-                    "keyId", keyId
-            ));
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500)
-                    .body(Map.of("success", false, "message", e.getMessage()));
+    try {
+        String donorId = String.valueOf(req.get("donorId"));
+        int amount = parseIntSafe(req.get("amount"), 0);
+        if (amount <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid amount"));
         }
-    }
 
-    // ================= SUBSCRIPTION: VERIFY CHECKOUT =================
+        int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
+        if (starterAmount < 1 || starterAmount > 28) starterAmount = 10;
+
+        Donourentity donor = donationRepo.findById(donorId)
+                .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
+
+        RazorpayClient client = new RazorpayClient(keyId, keySecret);
+
+        // ---------- CREATE PLAN WITHOUT JSONObject (Fix Compilation) ----------
+        Map<String, Object> item = Map.of(
+                "name", "Monthly Donation",
+                "amount", amount * 100,
+                "currency", "INR"
+        );
+
+        Map<String, Object> planRequest = Map.of(
+                "period", "monthly",
+                "interval", 1,
+                "item", item
+        );
+
+        Plan plan = client.plans.create(new org.json.JSONObject(planRequest));
+        donor.setPlanId(plan.get("id"));
+        donationRepo.save(donor);
+
+        // ---------- CREATE SUBSCRIPTION (Using Only Maps) ----------
+        Map<String, Object> addon1 = Map.of(
+                "item", Map.of(
+                        "name", "Auth ₹1",
+                        "amount", 100,
+                        "currency", "INR"
+                )
+        );
+
+        Map<String, Object> addon2 = Map.of(
+                "item", Map.of(
+                        "name", "First Debit",
+                        "amount", starterAmount * 100,
+                        "currency", "INR"
+                )
+        );
+
+        Map<String, Object> notes = Map.of(
+                "donorId", donorId,
+                "monthlyAmount", String.valueOf(amount)
+        );
+
+        Map<String, Object> subscriptionRequest = new java.util.HashMap<>();
+        subscriptionRequest.put("plan_id", plan.get("id"));
+        subscriptionRequest.put("customer_notify", 1);
+        subscriptionRequest.put("total_count", subscriptionYears * 12);
+        subscriptionRequest.put("addons", java.util.List.of(addon1, addon2));
+        subscriptionRequest.put("notes", notes);
+
+        if (donor.getStartDay() != null) {
+            subscriptionRequest.put("start_at", getNextStartDate(donor.getStartDay()));
+        }
+
+        Subscription subscription = client.subscriptions.create(new org.json.JSONObject(subscriptionRequest));
+
+        donor.setSubscriptionId(subscription.get("id"));
+        donor.setSubscriptionStatus("CREATED");
+        donor.setMonthlyAmount((double) amount);
+        donor.setStartDay(starterAmount);
+        donationRepo.save(donor);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "subscription_id", subscription.get("id"),
+                "plan_id", plan.get("id"),
+                "keyId", keyId
+        ));
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500)
+                .body(Map.of("success", false, "message", e.getMessage()));
+    }
+}
+
+// ================= SUBSCRIPTION: VERIFY CHECKOUT =================
 
     @PostMapping("/verify-subscription")
     public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
@@ -2827,6 +2801,7 @@ public class RazorpayController {
         }
     }
 }
+
 
 
 
