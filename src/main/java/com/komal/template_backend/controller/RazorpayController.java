@@ -1163,89 +1163,49 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
 
 //     // --------------------------------------------------------------------
 //     // SUBSCRIPTION VERIFY
-    @PostMapping("/verify-subscription")
-public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
-
-    System.out.println("====================== VERIFY SUBSCRIPTION ======================");
-    System.out.println("Received: " + req);
-
-    try {
-        String subId = (String) req.get("razorpay_subscription_id");
-        String sig = (String) req.get("razorpay_signature");
-        String payId = (String) req.get("razorpay_payment_id");
-
-        if (subId == null || sig == null) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "msg", "Missing fields"));
-        }
-
-        Map<String, String> data = new HashMap<>();
-        data.put("razorpay_subscription_id", subId);
-        data.put("razorpay_payment_id", (payId != null && !payId.isBlank()) ? payId : "created");
-        data.put("razorpay_signature", sig);
-
-        boolean isValid = Utils.verifyPaymentSignature(data, keySecret);
-
-        if (!isValid) {
-            return ResponseEntity.status(400).body(Map.of("success", false, "msg", "Invalid signature"));
-        }
-
-        Donourentity donor = donationRepo.findBySubscriptionId(subId).orElse(null);
-        if (donor != null) {
-            donor.setSubscriptionStatus("ACTIVE");
-            donor.setStatus("SUCCESS");
-            donor.setPaymentId(payId);
-            donationRepo.save(donor);
-        }
-
-        return ResponseEntity.ok(Map.of("success", true));
-
-    } catch (Exception e) {
-        return ResponseEntity.status(500).body(Map.of("success", false, "error", e.getMessage()));
-    }
-}
 
 //     // -------------------------------------------------------------------
-   // @PostMapping("/verify-subscription")
-// public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
+   @PostMapping("/verify-subscription")
+public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
 
-//     String subId = (String) req.get("razorpay_subscription_id");
-//     String sig = (String) req.get("razorpay_signature");
-//     String payId = (String) req.get("razorpay_payment_id");
+    String subId = (String) req.get("razorpay_subscription_id");
+    String sig = (String) req.get("razorpay_signature");
+    String payId = (String) req.get("razorpay_payment_id");
 
-//     if (subId == null || sig == null) {
-//         return ResponseEntity.badRequest().body(Map.of("success", false, "msg", "Missing fields"));
-//     }
+    if (subId == null || sig == null) {
+        return ResponseEntity.badRequest().body(Map.of("success", false, "msg", "Missing fields"));
+    }
 
-//     String payload = (payId != null && !payId.isBlank())
-//             ? subId + "|" + payId
-//             : subId + "|created";
+    String payload = (payId != null && !payId.isBlank())
+            ? subId + "|" + payId
+            : subId + "|created";
 
-//     Map<String, String> data = new HashMap<>();
-//     data.put("razorpay_subscription_id", subId);
-//     if (payId != null && !payId.isBlank())
-//         data.put("razorpay_payment_id", payId);
-//     else
-//         data.put("razorpay_payment_id", "created");
+    Map<String, String> data = new HashMap<>();
+    data.put("razorpay_subscription_id", subId);
+    if (payId != null && !payId.isBlank())
+        data.put("razorpay_payment_id", payId);
+    else
+        data.put("razorpay_payment_id", "created");
 
-//     data.put("razorpay_signature", sig);
+    data.put("razorpay_signature", sig);
 
-//     boolean isValid = Utils.verifyPaymentSignature(data, keySecret);
+    boolean isValid = Utils.verifyPaymentSignature(data, keySecret);
 
-//     if (!isValid) {
-//         return ResponseEntity.status(400).body(Map.of("success", false, "msg", "Invalid signature"));
-//     }
+    if (!isValid) {
+        return ResponseEntity.status(400).body(Map.of("success", false, "msg", "Invalid signature"));
+    }
 
-//     // Update donor
-//     Donourentity donor = donationRepo.findBySubscriptionId(subId).orElse(null);
-//     if (donor != null) {
-//         donor.setSubscriptionStatus("ACTIVE");
-//         donor.setStatus("SUCCESS");
-//         donor.setPaymentId(payId); // may be null
-//         donationRepo.save(donor);
-//     }
+    // Update donor
+    Donourentity donor = donationRepo.findBySubscriptionId(subId).orElse(null);
+    if (donor != null) {
+        donor.setSubscriptionStatus("ACTIVE");
+        donor.setStatus("SUCCESS");
+        donor.setPaymentId(payId); // may be null
+        donationRepo.save(donor);
+    }
 
-//     return ResponseEntity.ok(Map.of("success", true));
-// }
+    return ResponseEntity.ok(Map.of("success", true));
+}
 
 //     @PostMapping("/verify-subscription")
 // public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
@@ -1415,6 +1375,7 @@ public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req
         }
     }
 }
+
 
 
 
