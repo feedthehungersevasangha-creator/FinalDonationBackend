@@ -1400,34 +1400,34 @@ public class RazorpayController {
     // HMAC UTILITY
     // --------------------------------------------------------------------
 
-    // private String hmacSha256(String data, String secret) throws Exception {
-    //     Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
-    //     SecretKeySpec key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
-    //     sha256_HMAC.init(key);
-    //     byte[] hash = sha256_HMAC.doFinal(data.getBytes());
+    private String hmacSha256(String data, String secret) throws Exception {
+        Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
+        SecretKeySpec key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
+        sha256_HMAC.init(key);
+        byte[] hash = sha256_HMAC.doFinal(data.getBytes());
 
-    //     StringBuilder sb = new StringBuilder();
-    //     for (byte b : hash) {
-    //         String hex = Integer.toHexString(0xff & b);
-    //         if (hex.length() == 1) sb.append('0');
-    //         sb.append(hex);
-    //     }
-    //     return sb.toString();
-    // }
-    private String hmacSha256Hex(String data, String secret) throws Exception {
-    Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
-    SecretKeySpec key = new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256");
-    sha256_HMAC.init(key);
-    byte[] hash = sha256_HMAC.doFinal(data.getBytes("UTF-8"));
-
-    StringBuilder hex = new StringBuilder();
-    for (byte b : hash) {
-        String h = Integer.toHexString(0xff & b);
-        if (h.length() == 1) hex.append('0');
-        hex.append(h);
+        StringBuilder sb = new StringBuilder();
+        for (byte b : hash) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) sb.append('0');
+            sb.append(hex);
+        }
+        return sb.toString();
     }
-    return hex.toString();
-}
+//     private String hmacSha256Hex(String data, String secret) throws Exception {
+//     Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
+//     SecretKeySpec key = new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256");
+//     sha256_HMAC.init(key);
+//     byte[] hash = sha256_HMAC.doFinal(data.getBytes("UTF-8"));
+
+//     StringBuilder hex = new StringBuilder();
+//     for (byte b : hash) {
+//         String h = Integer.toHexString(0xff & b);
+//         if (h.length() == 1) hex.append('0');
+//         hex.append(h);
+//     }
+//     return hex.toString();
+// }
 
 
 private boolean verifyWebhook(String payload, String headerSignature) {
@@ -1683,50 +1683,92 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
 //     // --------------------------------------------------------------------
     @PostMapping("/verify-subscription")
 public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
-    System.out.println("====================== VERIFY SUBSCRIPTION ======================");
-    System.out.println("Received: " + req);
 
-    try {
-        String subId = (String) req.get("razorpay_subscription_id");
-        String sig = (String) req.get("razorpay_signature");
-        String payId = (String) req.get("razorpay_payment_id");  // may be null
+    String subId = (String) req.get("razorpay_subscription_id");
+    String sig = (String) req.get("razorpay_signature");
+    String payId = (String) req.get("razorpay_payment_id");
 
-        if (subId == null || sig == null) {
-            return ResponseEntity.badRequest().body("Missing required fields");
-        }
-
-        String payload;
-
-        if (payId != null && !payId.isBlank()) {
-            // CASE 1: AUTODEBIT ₹1 VERIFIED
-            payload = subId + "|" + payId;
-        } else {
-            // CASE 2: NO PAYMENT_ID → mandate created with NO initial debit
-            payload = subId + "|created";
-        }
-
-        String expectedSignature = hmacSha256(payload, keySecret);
-
-        if (!expectedSignature.equals(sig)) {
-            System.out.println("❌ INVALID SIGNATURE\nExpected= " + expectedSignature + "\nGot= " + sig);
-            return ResponseEntity.status(400).body("Invalid signature");
-        }
-
-        // Update donor status
-        Donourentity donor = donationRepo.findBySubscriptionId(subId).orElse(null);
-        if (donor != null) {
-            donor.setSubscriptionStatus("ACTIVE");
-            donor.setStatus("Success");
-            donor.setPaymentId(payId);   // may remain null → correct for UPI autopay
-            donationRepo.save(donor);
-        }
-
-        return ResponseEntity.ok(Map.of("success", true));
-
-    } catch (Exception e) {
-        return ResponseEntity.status(500).body("error");
+    if (subId == null || sig == null) {
+        return ResponseEntity.badRequest().body(Map.of("success", false, "msg", "Missing fields"));
     }
+
+    String payload = (payId != null && !payId.isBlank())
+            ? subId + "|" + payId
+            : subId + "|created";
+
+    Map<String, String> data = new HashMap<>();
+    data.put("razorpay_subscription_id", subId);
+    if (payId != null && !payId.isBlank())
+        data.put("razorpay_payment_id", payId);
+    else
+        data.put("razorpay_payment_id", "created");
+
+    data.put("razorpay_signature", sig);
+
+    boolean isValid = Utils.verifyPaymentSignature(data, keySecret);
+
+    if (!isValid) {
+        return ResponseEntity.status(400).body(Map.of("success", false, "msg", "Invalid signature"));
+    }
+
+    // Update donor
+    Donourentity donor = donationRepo.findBySubscriptionId(subId).orElse(null);
+    if (donor != null) {
+        donor.setSubscriptionStatus("ACTIVE");
+        donor.setStatus("SUCCESS");
+        donor.setPaymentId(payId); // may be null
+        donationRepo.save(donor);
+    }
+
+    return ResponseEntity.ok(Map.of("success", true));
 }
+
+//     @PostMapping("/verify-subscription")
+// public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
+//     System.out.println("====================== VERIFY SUBSCRIPTION ======================");
+//     System.out.println("Received: " + req);
+
+//     try {
+//         String subId = (String) req.get("razorpay_subscription_id");
+//         String sig = (String) req.get("razorpay_signature");
+//         String payId = (String) req.get("razorpay_payment_id");  // may be null
+
+//         if (subId == null || sig == null) {
+//             return ResponseEntity.badRequest().body("Missing required fields");
+//         }
+
+//         String payload;
+
+//         if (payId != null && !payId.isBlank()) {
+//             // CASE 1: AUTODEBIT ₹1 VERIFIED
+//             payload = subId + "|" + payId;
+//         } else {
+//             // CASE 2: NO PAYMENT_ID → mandate created with NO initial debit
+//             payload = subId + "|created";
+//         }
+
+//         String expectedSignature = hmacSha256(payload, keySecret);
+
+//         if (!expectedSignature.equals(sig)) {
+//             System.out.println("❌ INVALID SIGNATURE\nExpected= " + expectedSignature + "\nGot= " + sig);
+//             return ResponseEntity.status(400).body("Invalid signature");
+//         }
+
+//         // Update donor status
+//         Donourentity donor = donationRepo.findBySubscriptionId(subId).orElse(null);
+//         if (donor != null) {
+//             donor.setSubscriptionStatus("ACTIVE");
+//             donor.setStatus("Success");
+//             donor.setPaymentId(payId);   // may remain null → correct for UPI autopay
+//             donationRepo.save(donor);
+//         }
+
+//         return ResponseEntity.ok(Map.of("success", true));
+
+//     } catch (Exception e) {
+//         return ResponseEntity.status(500).body("error");
+//     }
+// }
 
 // -----------------------------------------------------------------------------------
     // @PostMapping("/verify-subscription")
@@ -1848,6 +1890,7 @@ public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req
         }
     }
 }
+
 
 
 
