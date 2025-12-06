@@ -1943,13 +1943,13 @@ public ResponseEntity<?> webhook(@RequestBody String payload,
 //             });
 //         }
 
-//         return ResponseEntity.ok("OK");
+        return ResponseEntity.ok("OK");
 
-//     } catch (Exception e) {
-//         e.printStackTrace();
-//         return ResponseEntity.status(500).body("error");
-//     }
-// }
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500).body("error");
+    }
+}
 
     // Helper to sync subscription status from webhook into DB
     private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
@@ -1986,6 +1986,7 @@ public ResponseEntity<?> webhook(@RequestBody String payload,
         }
     }
 }
+
 
 
 
