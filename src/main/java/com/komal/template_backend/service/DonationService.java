@@ -683,7 +683,7 @@ private LocalDateTime parseDate(String date) {
 
     List<Donourentity> records =
             donationRepo.findByDonationDateBetween(from, to);
-
+    System.out.println("RECORD COUNT: " + records.size());
     Map<String, Long> counts = calculateCounts(records);
 
     double totalAmount = records.stream()
