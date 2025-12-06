@@ -1299,7 +1299,6 @@ public class RazorpayController {
     // @Autowired
     // private pdfReceiptService pdfReceiptServic;
     @Autowired
-private PdfReceiptServic @Autowired
 private PdfReceiptServic pdfReceiptService;
 ;
 
@@ -1988,6 +1987,7 @@ public ResponseEntity<?> webhook(@RequestBody String payload,
         }
     }
 }
+
 
 
 
