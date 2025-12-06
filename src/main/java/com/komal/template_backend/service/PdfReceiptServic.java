@@ -698,7 +698,7 @@ private String displayReceiptType(Donourentity d) {
             cs.setFont(font, 16);
             cs.newLineAtOffset(margin, y - 10);
             // cs.showText("Mandate Registration Confirmation");
-            SUCCESS.equalsIgnoreCase(d.getSubscriptionStatus());
+            cs.showText("e-Mandate Registration Confirmation");
 
             cs.endText();
             
@@ -715,7 +715,7 @@ private String displayReceiptType(Donourentity d) {
             cs.newLineAtOffset(0, -16);
             cs.showText("Subscription ID: " + safe(d.getSubscriptionId()));
             cs.newLineAtOffset(0, -16);
-            cs.showText("Mandate ID: " + safe(d.getMandateId()));
+            cs.showText("Mandate ID: " + safe(d.getRazorpayMandateId()));
             cs.newLineAtOffset(0, -16);
             cs.showText("Mandate Status: " + safe(d.getMandateStatus()));
             cs.newLineAtOffset(0, -16);
