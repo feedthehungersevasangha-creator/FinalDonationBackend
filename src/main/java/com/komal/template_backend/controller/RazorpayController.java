@@ -1068,54 +1068,69 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
 
 //     // -------------------------------------------------------------------
   
-    @PostMapping("/verify-subscription")
+   @PostMapping("/verify-subscription")
 public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
     System.out.println("====================== VERIFY SUBSCRIPTION ======================");
-    System.out.println("Received: " + req);
+    System.out.println("RAW BODY: " + req);
 
     try {
         String subId = (String) req.get("razorpay_subscription_id");
-        String sig = (String) req.get("razorpay_signature");
-        String payId = (String) req.get("razorpay_payment_id");  // may be null
+        String payId = (String) req.get("razorpay_payment_id");
+        String sig   = (String) req.get("razorpay_signature");
 
-        if (subId == null || sig == null) {
-            return ResponseEntity.badRequest().body("Missing required fields");
+        System.out.println("➡ subId = " + subId);
+        System.out.println("➡ payId = " + payId);
+        System.out.println("➡ sig   = " + sig);
+
+        if (subId == null || subId.isBlank()
+                || payId == null || payId.isBlank()
+                || sig == null || sig.isBlank()) {
+
+            System.out.println("❌ Missing required fields for subscription verification");
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "message", "Missing required fields")
+            );
         }
 
-        String payload;
-
-        if (payId != null && !payId.isBlank()) {
-            // CASE 1: AUTODEBIT ₹1 VERIFIED
-            payload = subId + "|" + payId;
-        } else {
-            // CASE 2: NO PAYMENT_ID → mandate created with NO initial debit
-            payload = subId + "|created";
-        }
-
+        // ✅ Razorpay expects: payment_id + "|" + subscription_id
+        String payload = payId + "|" + subId;
         String expectedSignature = hmacSha256(payload, keySecret);
 
+        System.out.println("✅ VERIFY SUBSCRIPTION SIGNATURE");
+        System.out.println("   payload           = " + payload);
+        System.out.println("   expectedSignature = " + expectedSignature);
+        System.out.println("   receivedSignature = " + sig);
+
         if (!expectedSignature.equals(sig)) {
-            System.out.println("❌ INVALID SIGNATURE\nExpected= " + expectedSignature + "\nGot= " + sig);
-            return ResponseEntity.status(400).body("Invalid signature");
+            System.out.println("❌ INVALID SIGNATURE");
+            return ResponseEntity.status(400).body(
+                    Map.of("success", false, "message", "Invalid signature")
+            );
         }
 
-        // Update donor status
+        // ✅ Signature is valid → update donor
         Donourentity donor = donationRepo.findBySubscriptionId(subId).orElse(null);
         if (donor != null) {
-            donor.setSubscriptionStatus("ACTIVE");
-            donor.setStatus("Success");
-            donor.setPaymentId(payId);   // may remain null → correct for UPI autopay
+            donor.setSubscriptionStatus("ACTIVE");   // <-- this is what your counts/webhook expect
+            donor.setStatus("SUCCESS");              // keep status in SUCCESS (caps like one-time)
+            donor.setPaymentId(payId);               // may be the ₹1 auth payment
             donationRepo.save(donor);
+
+            System.out.println("✅ Subscription activated for donorId=" + donor.getId());
+        } else {
+            System.out.println("⚠ No donor found for subscriptionId=" + subId);
         }
 
         return ResponseEntity.ok(Map.of("success", true));
 
     } catch (Exception e) {
-        return ResponseEntity.status(500).body("error");
+        e.printStackTrace();
+        return ResponseEntity.status(500).body(
+                Map.of("success", false, "message", "Server error")
+        );
     }
 }
 
- 
 // -----------------------------------------------------------------------------------
     // @PostMapping("/verify-subscription")
     // public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req) {
@@ -1236,6 +1251,7 @@ public ResponseEntity<?> verifySubscription(@RequestBody Map<String, Object> req
         }
     }
 }
+
 
 
 
