@@ -125,9 +125,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId
 
 @RestController
 @RequestMapping("/api/donors")
@@ -260,59 +263,44 @@ public class DonationController {
 //     }
 // }
 @GetMapping("/donation-counts")
-public ResponseEntity<?> getDonationCounts(
-        @RequestParam(required = false) String from,
-        @RequestParam(required = false) String to
-) {
-    try {
-        Map<String, Object> response = new HashMap<>();
+    public ResponseEntity<?> getDonationCounts(
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
 
-        // --------------------------
-        // OVERALL
-        // --------------------------
-        List<Donourentity> all = donationRepo.findAll();
-        response.put("overall", calculateCounts(all));
+        try {
+            Map<String, Object> response = new HashMap<>();
 
-        // --------------------------
-        // TODAY
-        // --------------------------
-        LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
-        LocalDateTime startToday = today.atStartOfDay();
-        LocalDateTime endToday = startToday.plusDays(1);
-        response.put("today", getCountsForRange(startToday, endToday));
+            // OVERALL
+            List<Donourentity> all = donationRepo.findAll();
+            response.put("overall", donationService.calculateCounts(all));
 
-        // --------------------------
-        // THIS MONTH
-        // --------------------------
-        LocalDateTime startMonth = today.withDayOfMonth(1).atStartOfDay();
-        LocalDateTime endMonth = startMonth.plusMonths(1);
-        response.put("thisMonth", getCountsForRange(startMonth, endMonth));
+            // TODAY
+            LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+            LocalDateTime startToday = today.atStartOfDay();
+            LocalDateTime endToday = startToday.plusDays(1);
+            response.put("today", donationService.getCountsForRange(startToday, endToday));
 
-        // --------------------------
-        // CUSTOM RANGE (OPTIONAL)
-        // --------------------------
-        if (from != null && !from.isBlank() && to != null && !to.isBlank()) {
-            LocalDateTime fromDate = LocalDate.parse(from).atStartOfDay();
-            LocalDateTime toDate = LocalDate.parse(to).plusDays(1).atStartOfDay();
-            response.put("custom", getCountsForRange(fromDate, toDate));
-        } 
-        else {
-            response.put("custom", calculateCounts(all));
+            // THIS MONTH
+            LocalDateTime startMonth = today.withDayOfMonth(1).atStartOfDay();
+            LocalDateTime endMonth = startMonth.plusMonths(1);
+            response.put("thisMonth", donationService.getCountsForRange(startMonth, endMonth));
+
+            // CUSTOM RANGE
+            if (from != null && !from.isBlank() && to != null && !to.isBlank()) {
+                LocalDateTime fromDate = LocalDate.parse(from).atStartOfDay();
+                LocalDateTime toDate = LocalDate.parse(to).plusDays(1).atStartOfDay();
+
+                response.put("custom", donationService.getCountsForRange(fromDate, toDate));
+            } else {
+                response.put("custom", donationService.calculateCounts(all));
+            }
+
+            return ResponseEntity.ok(Map.of("success", true, "counts", response));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
         }
-
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "counts", response
-        ));
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500).body(Map.of(
-                "success", false,
-                "message", e.getMessage()
-        ));
     }
 }
-
-
 }
