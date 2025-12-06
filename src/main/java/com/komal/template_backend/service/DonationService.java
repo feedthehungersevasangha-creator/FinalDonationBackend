@@ -679,15 +679,18 @@ private LocalDateTime parseDate(String date) {
             .atStartOfDay(ZoneId.of("Asia/Kolkata"))
             .toLocalDateTime();
 }
- public Map<String, Object> getCountsForRange(LocalDateTime from, LocalDateTime to) {
+    public Map<String, Object> getCountsForRange(LocalDateTime from, LocalDateTime to) {
 
-    List<Donourentity> records = donationRepo.findByDonationDateBetween(from, to);
+    List<Donourentity> records =
+            donationRepo.findByDonationDateBetween(from, to);
 
     Map<String, Long> counts = calculateCounts(records);
 
     double totalAmount = records.stream()
-            .filter(d -> d.getPaymentId() != null 
-                      || "active".equalsIgnoreCase(d.getSubscriptionStatus()))
+            .filter(d ->
+                    "SUCCESS".equalsIgnoreCase(d.getStatus()) ||
+                    "SUCCESS".equalsIgnoreCase(d.getSubscriptionStatus())
+            )
             .mapToDouble(Donourentity::getAmount)
             .sum();
 
@@ -696,41 +699,35 @@ private LocalDateTime parseDate(String date) {
             "totalAmount", totalAmount
     );
 }
+
 public Map<String, Long> calculateCounts(List<Donourentity> list) {
 
-    long successOneTime = list.stream()
-            .filter(d -> d.getSubscriptionId() == null && d.getPaymentId() != null)
+    // ✅ ONE-TIME SUCCESS
+    long oneTime = list.stream()
+            .filter(d ->
+                    d.getOrderId() != null &&
+                    d.getPaymentId() != null &&
+                    "SUCCESS".equalsIgnoreCase(d.getStatus())
+            )
             .count();
 
-    long pendingOneTime = list.stream()
-            .filter(d -> d.getSubscriptionId() == null
-                    && d.getOrderId() != null
-                    && d.getPaymentId() == null)
+    // ✅ SUBSCRIPTION SUCCESS
+    long subscription = list.stream()
+            .filter(d ->
+                    d.getSubscriptionId() != null &&
+                    "SUCCESS".equalsIgnoreCase(d.getSubscriptionStatus())
+            )
             .count();
 
-    long successSubscription = list.stream()
-            .filter(d -> "active".equalsIgnoreCase(d.getSubscriptionStatus()))
-            .count();
-
-    long pendingSubscription = list.stream()
-            .filter(d -> d.getSubscriptionId() != null
-                    && List.of("created", "authenticated", "initiated", "pending")
-                            .contains(String.valueOf(d.getSubscriptionStatus()).toLowerCase()))
-            .count();
-
-    long totalSuccess = successOneTime + successSubscription;
-    long totalPending = pendingOneTime + pendingSubscription;
+    long total = oneTime + subscription;
 
     return Map.of(
-            "successOneTime", successOneTime,
-            "pendingOneTime", pendingOneTime,
-            "successSubscription", successSubscription,
-            "pendingSubscription", pendingSubscription,
-            "totalSuccess", totalSuccess,
-            "totalPending", totalPending
+            "total", total,
+            "oneTime", oneTime,
+            "subscription", subscription
     );
 }
-   
+
 // ---------------------------------------------------------------------------------------------------
 // public Map<String, Object> getCountsForRange(LocalDateTime from, LocalDateTime to) {
 
