@@ -297,12 +297,17 @@ public Donourentity saveDonation(Donourentity donor) throws Exception {
             existing.setSignature(donor.getSignature());
 
         // ✅ SUCCESS IF PAYMENT / AUTH COMPLETED
-        if (donor.getPaymentId() != null
-                || "ACTIVE".equalsIgnoreCase(donor.getSubscriptionStatus())
-                || "AUTHENTICATED".equalsIgnoreCase(donor.getSubscriptionStatus())) {
+        // if (donor.getPaymentId() != null
+        //         || "ACTIVE".equalsIgnoreCase(donor.getSubscriptionStatus())
+        //         || "AUTHENTICATED".equalsIgnoreCase(donor.getSubscriptionStatus())) {
 
-            existing.setStatus("SUCCESS");
-        }
+        //     existing.setStatus("SUCCESS");
+        // }
+        if (donor.getSubscriptionStatus() != null) {
+    existing.setSubscriptionStatus("SUCCESS");
+    existing.setStatus("SUCCESS");
+}
+
 
         // subscription fields
         if (donor.getSubscriptionId() != null)
@@ -316,6 +321,19 @@ public Donourentity saveDonation(Donourentity donor) throws Exception {
 
         if (donor.getMandateEndDate() != null)
             existing.setMandateEndDate(donor.getMandateEndDate());
+        // ✅ SAVE MANDATE DETAILS (CRITICAL)
+if (donor.getRazorpayMandateId() != null)
+    existing.setRazorpayMandateId(donor.getRazorpayMandateId());
+
+if (donor.getMandateStatus() != null)
+    existing.setMandateStatus(donor.getMandateStatus());
+
+if (donor.getMandateAmount() != null)
+    existing.setMandateAmount(donor.getMandateAmount());
+
+if (donor.getMandateFrequency() != null)
+    existing.setMandateFrequency(donor.getMandateFrequency());
+
 
         // encrypted razorpay data
         if (donor.getPaymentMethod() != null)
