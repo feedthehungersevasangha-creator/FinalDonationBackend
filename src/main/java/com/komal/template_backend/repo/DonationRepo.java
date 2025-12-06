@@ -18,6 +18,8 @@ public interface DonationRepo extends MongoRepository<Donourentity, String> {
     // Basic counts
     long countByStatus(String status);
 
+    
+
     long countByStatusAndSubscriptionIdIsNull(String status);
     long countByStatusAndSubscriptionIdIsNotNull(String status);
 
@@ -32,4 +34,6 @@ List<Donourentity> findByDonationDateBetween(LocalDateTime from, LocalDateTime t
 
     // Amount retrieval
     List<Donourentity> findByStatusAndDonationDateBetween(String status, LocalDateTime start, LocalDateTime end);
+
+    List<Donourentity> findActiveSubscriptions();
 }
