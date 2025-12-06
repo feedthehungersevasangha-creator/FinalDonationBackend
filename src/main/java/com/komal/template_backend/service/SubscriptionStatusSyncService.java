@@ -1,4 +1,3 @@
-
 package com.komal.template_backend.service;
 
 import com.komal.template_backend.model.Donourentity;
@@ -22,51 +21,93 @@ public class SubscriptionStatusSyncService {
     private String keySecret;
 
     private final DonationRepo donationRepo;
+    private final MailService mailService;
+    private final PdfReceiptServic pdfReceiptService;
+    private final DonationService donationService;
 
-    public SubscriptionStatusSyncService(DonationRepo donationRepo) {
+    public SubscriptionStatusSyncService(
+            DonationRepo donationRepo,
+            MailService mailService,
+            PdfReceiptServic pdfReceiptService,
+            DonationService donationService
+    ) {
         this.donationRepo = donationRepo;
+        this.mailService = mailService;
+        this.pdfReceiptService = pdfReceiptService;
+        this.donationService = donationService;
     }
 
-    // ✅ Runs every 10 minutes
+    // ✅ EVERY 10 MINUTES
     @Scheduled(fixedDelay = 10 * 60 * 1000)
     public void syncSubscriptionsFromRazorpay() {
 
-        System.out.println("🔁 Mongo Sync: Subscription reconciliation started");
+        System.out.println("🔁 Razorpay → Mongo subscription sync started");
 
-        List<Donourentity> donors =
-                donationRepo.findActiveSubscriptions();
+        List<Donourentity> donors = donationRepo.findActiveSubscriptions();
 
         if (donors.isEmpty()) {
-            System.out.println("ℹ No active subscriptions to sync");
+            System.out.println("ℹ No subscriptions found");
             return;
         }
 
         try {
-            RazorpayClient client =
-                    new RazorpayClient(keyId, keySecret);
+            RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
             for (Donourentity donor : donors) {
 
-                String subId = donor.getSubscriptionId();
-                if (subId == null) continue;
+                if (donor.getSubscriptionId() == null) continue;
 
                 try {
-                    Subscription sub =
-                            client.subscriptions.fetch(subId);
+                    Subscription subscription =
+                            client.subscriptions.fetch(donor.getSubscriptionId());
 
-                    JSONObject json = sub.toJson();
+                    JSONObject subJson = subscription.toJson();
                     String razorpayStatus =
-                            json.optString("status", "")
-                                .toUpperCase();
+                            subJson.optString("status", "UNKNOWN").toUpperCase();
 
-                    if (!razorpayStatus.equals(donor.getSubscriptionStatus())) {
+                    String currentStatus = donor.getSubscriptionStatus();
+
+                    if (!razorpayStatus.equals(currentStatus)) {
 
                         donor.setSubscriptionStatus(razorpayStatus);
 
+                        // ✅ AUTHENTICATED / ACTIVE
                         if ("AUTHENTICATED".equals(razorpayStatus)
                                 || "ACTIVE".equals(razorpayStatus)) {
 
                             donor.setStatus("SUCCESS");
+
+                            // ✅ SEND MAIL ONLY ONCE
+                            if (Boolean.FALSE.equals(donor.getMandateMailSent())) {
+
+                                try {
+                                    Donourentity decrypted =
+                                            donationService.findByIdDecrypt(donor.getId());
+
+                                    byte[] pdf =
+                                            pdfReceiptService.generateMandateConfirmation(decrypted);
+
+                                    mailService.sendDonationReceiptWithAttachment(
+                                            decrypted.getEmail(),
+                                            decrypted.getFirstName() + " " + decrypted.getLastName(),
+                                            decrypted.getMonthlyAmount(),
+                                            decrypted.getSubscriptionId(),
+                                            pdf,
+                                            "Mandate_Confirmation_" + decrypted.getSubscriptionId() + ".pdf"
+                                    );
+
+                                    donor.setMandateMailSent(true);
+
+                                    System.out.println(
+                                            "📧 Mandate confirmation mail sent → "
+                                                    + donor.getSubscriptionId()
+                                    );
+
+                                } catch (Exception mailEx) {
+                                    System.out.println("❌ Mail failed for " + donor.getSubscriptionId());
+                                    mailEx.printStackTrace();
+                                }
+                            }
 
                         } else if ("HALTED".equals(razorpayStatus)
                                 || "CANCELLED".equals(razorpayStatus)) {
@@ -77,21 +118,19 @@ public class SubscriptionStatusSyncService {
                         donationRepo.save(donor);
 
                         System.out.println(
-                                "✅ Mongo Sync updated: " + subId
-                                + " → " + razorpayStatus
+                                "✅ Synced: " + donor.getSubscriptionId() +
+                                " → " + razorpayStatus
                         );
                     }
 
-                } catch (Exception ex) {
-                    System.out.println(
-                            "⚠ Failed to sync subscription " + subId
-                    );
-                    ex.printStackTrace();
+                } catch (Exception perSubEx) {
+                    System.out.println("⚠ Failed syncing " + donor.getSubscriptionId());
+                    perSubEx.printStackTrace();
                 }
             }
 
         } catch (Exception e) {
-            System.out.println("❌ Mongo sync job crashed");
+            System.out.println("❌ Razorpay sync crashed");
             e.printStackTrace();
         }
     }
