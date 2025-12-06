@@ -1259,7 +1259,7 @@ import com.komal.template_backend.repo.DonationRepo;
 import com.komal.template_backend.service.DonationService;
 import com.komal.template_backend.service.MailService;
 // import com.komal.template_backend.service.pdfReceiptServiceee;
-import com.komal.template_backend.service.pdfReceiptServic;
+import com.komal.template_backend.service.PdfReceiptServic;
 import com.razorpay.Order;
 import com.razorpay.Plan;
 import com.razorpay.RazorpayClient;
@@ -1299,7 +1299,7 @@ public class RazorpayController {
     // @Autowired
     // private pdfReceiptServiceee pdfReceiptServicee;
     @Autowired
-private pdfReceiptServic pdfReceiptService;
+private PdfReceiptServic pdfReceiptService;
 ;
 
 
@@ -1987,6 +1987,7 @@ public ResponseEntity<?> webhook(@RequestBody String payload,
         }
     }
 }
+
 
 
 
