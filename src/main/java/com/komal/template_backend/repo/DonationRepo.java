@@ -7,6 +7,19 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
+
+public interface DonationRepo extends MongoRepository<Donourentity, String> {
+
+    @Query(value = "{ 'subscriptionId': { $ne: null }, " +
+                   "  'subscriptionStatus': { $in: ['CREATED','AUTHENTICATED','ACTIVE'] } }")
+    List<Donourentity> findActiveSubscriptions();
+
+    Optional<Donourentity> findBySubscriptionId(String subscriptionId);
+}
+
+
 public interface DonationRepo extends MongoRepository<Donourentity, String> {
 
     Optional<Donourentity> findByOrderId(String orderId);
@@ -35,5 +48,4 @@ List<Donourentity> findByDonationDateBetween(LocalDateTime from, LocalDateTime t
     // Amount retrieval
     List<Donourentity> findByStatusAndDonationDateBetween(String status, LocalDateTime start, LocalDateTime end);
 
-    List<Donourentity> findActiveSubscriptions();
 }
