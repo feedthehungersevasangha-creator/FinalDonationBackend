@@ -698,7 +698,7 @@ private String displayReceiptType(Donourentity d) {
             cs.setFont(font, 16);
             cs.newLineAtOffset(margin, y - 10);
             // cs.showText("Mandate Registration Confirmation");
-            SUCCESS.equalsIgnoreCase(d.getSubscriptionStatus())
+            SUCCESS.equalsIgnoreCase(d.getSubscriptionStatus());
 
             cs.endText();
             
