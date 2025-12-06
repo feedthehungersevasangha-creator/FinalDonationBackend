@@ -22,6 +22,7 @@ public interface DonationRepo extends MongoRepository<Donourentity, String> {
     long countByStatusAndSubscriptionIdIsNotNull(String status);
 
     long countBySubscriptionStatus(String subscriptionStatus);
+Optional<Donourentity> findTopBySubscriptionIdOrderByDonationDateAsc(String subscriptionId);
 
     // Time-window counts
     long countByStatusAndDonationDateBetween(String status, LocalDateTime start, LocalDateTime end);
