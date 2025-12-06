@@ -679,73 +679,127 @@ private LocalDateTime parseDate(String date) {
             .atStartOfDay(ZoneId.of("Asia/Kolkata"))
             .toLocalDateTime();
 }
-public Map<String, Object> getCountsForRange(LocalDateTime from, LocalDateTime to) {
+ public Map<String, Object> getCountsForRange(LocalDateTime from, LocalDateTime to) {
 
-    final String SUCCESS = "SUCCESS";
+    List<Donourentity> records = donationRepo.findByDonationDateBetween(from, to);
 
-    long total = donationRepo.countByStatusAndDonationDateBetween(SUCCESS, from, to);
-    long oneTime = donationRepo.countByStatusAndSubscriptionIdIsNullAndDonationDateBetween(SUCCESS, from, to);
-    long monthly = donationRepo.countByStatusAndSubscriptionIdIsNotNullAndDonationDateBetween(SUCCESS, from, to);
+    Map<String, Long> counts = calculateCounts(records);
 
-    List<Donourentity> records = donationRepo.findByStatusAndDonationDateBetween(SUCCESS, from, to);
-    double totalAmount = records.stream().mapToDouble(Donourentity::getAmount).sum();
+    double totalAmount = records.stream()
+            .filter(d -> d.getPaymentId() != null 
+                      || "active".equalsIgnoreCase(d.getSubscriptionStatus()))
+            .mapToDouble(Donourentity::getAmount)
+            .sum();
 
     return Map.of(
-            "total", total,
-            "oneTime", oneTime,
-            "monthly", monthly,
+            "counts", counts,
             "totalAmount", totalAmount
     );
+}
+public Map<String, Long> calculateCounts(List<Donourentity> list) {
+
+    long successOneTime = list.stream()
+            .filter(d -> d.getSubscriptionId() == null && d.getPaymentId() != null)
+            .count();
+
+    long pendingOneTime = list.stream()
+            .filter(d -> d.getSubscriptionId() == null
+                    && d.getOrderId() != null
+                    && d.getPaymentId() == null)
+            .count();
+
+    long successSubscription = list.stream()
+            .filter(d -> "active".equalsIgnoreCase(d.getSubscriptionStatus()))
+            .count();
+
+    long pendingSubscription = list.stream()
+            .filter(d -> d.getSubscriptionId() != null
+                    && List.of("created", "authenticated", "initiated", "pending")
+                            .contains(String.valueOf(d.getSubscriptionStatus()).toLowerCase()))
+            .count();
+
+    long totalSuccess = successOneTime + successSubscription;
+    long totalPending = pendingOneTime + pendingSubscription;
+
+    return Map.of(
+            "successOneTime", successOneTime,
+            "pendingOneTime", pendingOneTime,
+            "successSubscription", successSubscription,
+            "pendingSubscription", pendingSubscription,
+            "totalSuccess", totalSuccess,
+            "totalPending", totalPending
+    );
+}
+   
+// ---------------------------------------------------------------------------------------------------
+// public Map<String, Object> getCountsForRange(LocalDateTime from, LocalDateTime to) {
+
+//     final String SUCCESS = "SUCCESS";
+
+//     long total = donationRepo.countByStatusAndDonationDateBetween(SUCCESS, from, to);
+//     long oneTime = donationRepo.countByStatusAndSubscriptionIdIsNullAndDonationDateBetween(SUCCESS, from, to);
+//     long monthly = donationRepo.countByStatusAndSubscriptionIdIsNotNullAndDonationDateBetween(SUCCESS, from, to);
+
+//     List<Donourentity> records = donationRepo.findByStatusAndDonationDateBetween(SUCCESS, from, to);
+//     double totalAmount = records.stream().mapToDouble(Donourentity::getAmount).sum();
+
+//     return Map.of(
+//             "total", total,
+//             "oneTime", oneTime,
+//             "monthly", monthly,
+//             "totalAmount", totalAmount
+//     );
     
-}
-public Map<String, Object> getUniversalCounts(String fromDate, String toDate) {
+// }
+// public Map<String, Object> getUniversalCounts(String fromDate, String toDate) {
 
-    final String SUCCESS = "SUCCESS";
-    Map<String, Object> response = new HashMap<>();
+//     final String SUCCESS = "SUCCESS";
+//     Map<String, Object> response = new HashMap<>();
 
-    // ========== OVERALL ==========
-    long total = donationRepo.countByStatus(SUCCESS);
-    long oneTime = donationRepo.countByStatusAndSubscriptionIdIsNull(SUCCESS);
-    long monthly = donationRepo.countByStatusAndSubscriptionIdIsNotNull(SUCCESS);
+//     // ========== OVERALL ==========
+//     long total = donationRepo.countByStatus(SUCCESS);
+//     long oneTime = donationRepo.countByStatusAndSubscriptionIdIsNull(SUCCESS);
+//     long monthly = donationRepo.countByStatusAndSubscriptionIdIsNotNull(SUCCESS);
 
-    response.put("total", total);
-    response.put("oneTime", oneTime);
-    response.put("monthly", monthly);
+//     response.put("total", total);
+//     response.put("oneTime", oneTime);
+//     response.put("monthly", monthly);
 
-    // ========== TODAY ==========
-    LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
-    LocalDateTime startToday = today.atStartOfDay();
-    LocalDateTime endToday = startToday.plusDays(1);
+//     // ========== TODAY ==========
+//     LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+//     LocalDateTime startToday = today.atStartOfDay();
+//     LocalDateTime endToday = startToday.plusDays(1);
 
-    response.put("today", getCountsForRange(startToday, endToday));
+//     response.put("today", getCountsForRange(startToday, endToday));
 
-    // ========== THIS MONTH ==========
-    LocalDateTime startMonth = today.withDayOfMonth(1).atStartOfDay();
-    LocalDateTime endMonth = startMonth.plusMonths(1);
+//     // ========== THIS MONTH ==========
+//     LocalDateTime startMonth = today.withDayOfMonth(1).atStartOfDay();
+//     LocalDateTime endMonth = startMonth.plusMonths(1);
 
-    response.put("thisMonth", getCountsForRange(startMonth, endMonth));
+//     response.put("thisMonth", getCountsForRange(startMonth, endMonth));
 
-    // ========== CUSTOM RANGE ==========
-    if (fromDate != null && !fromDate.isBlank() && toDate != null && !toDate.isBlank()) {
+//     // ========== CUSTOM RANGE ==========
+//     if (fromDate != null && !fromDate.isBlank() && toDate != null && !toDate.isBlank()) {
 
-        // User selected dates → calculate range
-        LocalDateTime from = parseDate(fromDate);
-        LocalDateTime to = parseDate(toDate).plusDays(1);
+//         // User selected dates → calculate range
+//         LocalDateTime from = parseDate(fromDate);
+//         LocalDateTime to = parseDate(toDate).plusDays(1);
 
-        response.put("custom", getCountsForRange(from, to));
+//         response.put("custom", getCountsForRange(from, to));
 
-    } else {
-        // No range → return overall totals as custom
-        Map<String, Object> defaultCustom = new HashMap<>();
-        defaultCustom.put("total", total);
-        defaultCustom.put("oneTime", oneTime);
-        defaultCustom.put("monthly", monthly);
+//     } else {
+//         // No range → return overall totals as custom
+//         Map<String, Object> defaultCustom = new HashMap<>();
+//         defaultCustom.put("total", total);
+//         defaultCustom.put("oneTime", oneTime);
+//         defaultCustom.put("monthly", monthly);
 
-        response.put("custom", defaultCustom);
-    }
+//         response.put("custom", defaultCustom);
+//     }
 
-    return response;
-}
+//     return response;
+// }
+    // -----------------------------------------------------------------------------------------------
 
 // public Map<String, Object> getUniversalCounts(String fromDate, String toDate) {
 
