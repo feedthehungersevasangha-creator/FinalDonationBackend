@@ -44,7 +44,7 @@
 //     DonationService donationService;
 
 //     @Autowired
-//     private pdfReceiptService pdfReceiptServicee;
+//     private pdfReceiptService pdfReceiptServic;
 //     @Autowired
 //     private MailService mailService;
 
@@ -190,17 +190,17 @@
 //                         // Choose correct receipt type and generate appropriate PDF
 //                         byte[] pdf;
 //                         if ("onetime".equalsIgnoreCase(decrypted.getFrequency())) {
-//                             pdf = pdfReceiptServicee.generateOneTimeDonationReceipt(
+//                             pdf = pdfReceiptServic.generateOneTimeDonationReceipt(
 //                                     decrypted,
 //                                     decrypted.getPaymentId(),
 //                                     decrypted.getAmount()
 //                             );
 //                         } else if (decrypted.getSubscriptionId() != null && decrypted.getPaymentId() == null) {
 //                             // Mandate confirmation (subscription created but no payment yet)
-//                             pdf = pdfReceiptServicee.generateMandateConfirmation(decrypted);
+//                             pdf = pdfReceiptServic.generateMandateConfirmation(decrypted);
 //                         } else {
 //                             // Monthly debit / subscription payment
-//                             pdf = pdfReceiptServicee.generateMonthlyDebitReceipt(
+//                             pdf = pdfReceiptServic.generateMonthlyDebitReceipt(
 //                                     decrypted,
 //                                     decrypted.getPaymentId(),
 //                                     decrypted.getAmount()
@@ -734,7 +734,7 @@
 //     private DonationService donationService;
 
 //     @Autowired
-//     private pdfReceiptService pdfReceiptServicee;
+//     private pdfReceiptService pdfReceiptServic;
 
 //     @Autowired
 //     private MailService mailService;
@@ -842,7 +842,7 @@
 //                 try {
 //                     Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
 //                     if (decrypted != null) {
-//                         byte[] pdf = pdfReceiptServicee.generateOneTimeDonationReceipt(
+//                         byte[] pdf = pdfReceiptServic.generateOneTimeDonationReceipt(
 //                                 decrypted,
 //                                 decrypted.getPaymentId(),
 //                                 decrypted.getAmount()
@@ -1258,7 +1258,8 @@ import com.komal.template_backend.model.Donourentity;
 import com.komal.template_backend.repo.DonationRepo;
 import com.komal.template_backend.service.DonationService;
 import com.komal.template_backend.service.MailService;
-import com.komal.template_backend.service.pdfReceiptService;
+// import com.komal.template_backend.service.pdfReceiptService;
+import com.komal.template_backend.service.PdfReceiptServic;
 import com.razorpay.Order;
 import com.razorpay.Plan;
 import com.razorpay.RazorpayClient;
@@ -1295,8 +1296,11 @@ public class RazorpayController {
     @Autowired
     private DonationService donationService;
 
+    // @Autowired
+    // private pdfReceiptService pdfReceiptServic;
     @Autowired
-    private pdfReceiptService pdfReceiptServicee;
+private PdfReceiptServic pdfReceiptServic;
+
 
     @Autowired
     private MailService mailService;
@@ -1422,7 +1426,7 @@ public class RazorpayController {
                 try {
                     Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
                     if (decrypted != null) {
-                        byte[] pdf = pdfReceiptServicee.generateOneTimeDonationReceipt(
+                        byte[] pdf = pdfReceiptServic.generateOneTimeDonationReceipt(
                                 decrypted,
                                 decrypted.getPaymentId(),
                                 decrypted.getAmount()
@@ -1803,75 +1807,47 @@ public ResponseEntity<?> webhook(@RequestBody String payload,
         // ------------------------------------------------------------------
         // 3️⃣ ALL SUBSCRIPTION STATUS EVENTS
         // ------------------------------------------------------------------
-        if (event.startsWith("subscription.")) {
-
-            JSONObject sub = json.getJSONObject("payload")
-                    .getJSONObject("subscription")
-                    .getJSONObject("entity");
-
-            String subscriptionId = sub.getString("id");
-            String subStatus = sub.optString("status", "").toUpperCase();
-
-            donationRepo.findBySubscriptionId(subscriptionId).ifPresent(donor -> {
-
-                donor.setSubscriptionStatus(subStatus);
-
-                // ✅ AUTHENTICATED / ACTIVE = SUCCESS
-                if ("AUTHENTICATED".equals(subStatus) || "ACTIVE".equals(subStatus)) {
-                    donor.setStatus("SUCCESS");
-                }
-
-                donationRepo.save(donor);
-                System.out.println("✅ subscription update → " + subStatus);
-            });
-        }
-
-        // ------------------------------------------------------------------
-        // 4️⃣ MONTHLY CHARGE (IMPORTANT FIX)
-        // ------------------------------------------------------------------
         if ("subscription.charged".equals(event)) {
 
-            JSONObject p = json.getJSONObject("payload")
-                    .getJSONObject("payment")
-                    .getJSONObject("entity");
+    JSONObject p = json.getJSONObject("payload")
+            .getJSONObject("payment")
+            .getJSONObject("entity");
 
-            String subscriptionId = p.getString("subscription_id");
-            String paymentId = p.getString("id");
-            double amountPaid = p.getInt("amount") / 100.0;
+    String subscriptionId = p.getString("subscription_id");
+    String paymentId = p.getString("id");
+    double amountPaid = p.getInt("amount") / 100.0;
 
-            donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
+    donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
 
-                Donourentity monthly = new Donourentity();
+        Donourentity monthly = new Donourentity();
 
-                // ✅ Copy NON-ENCRYPTED fields only
-                monthly.setFirstName(parent.getFirstName());
-                monthly.setLastName(parent.getLastName());
-                monthly.setEmail(parent.getEmail());
-                monthly.setMobile(parent.getMobile());
+        monthly.setFirstName(parent.getFirstName());
+        monthly.setLastName(parent.getLastName());
+        monthly.setEmail(parent.getEmail());
+        monthly.setMobile(parent.getMobile());
 
-                monthly.setSubscriptionId(subscriptionId);
-                monthly.setPaymentId(paymentId);
-                monthly.setAmount(amountPaid);
-                monthly.setStatus("SUCCESS");
-                monthly.setSubscriptionStatus("CHARGED");
-                monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+        monthly.setSubscriptionId(subscriptionId);
+        monthly.setPaymentId(paymentId);
+        monthly.setAmount(amountPaid);
+        monthly.setStatus("SUCCESS");
+        monthly.setSubscriptionStatus("CHARGED");
+        monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
 
-                // ✅ DIRECT SAVE (DO NOT call saveDonation)
-                donationRepo.save(monthly);
+        donationRepo.save(monthly);
 
-                System.out.println("✅ Monthly debit saved (new row)");
-                // ✅ SEND MONTHLY RECEIPT
+        System.out.println("✅ Monthly debit saved (new row)");
+
         try {
             Donourentity decrypted = donationService.findByIdDecrypt(monthly.getId());
 
             byte[] pdf = pdfReceiptService.generateMonthlyDebitReceipt(
-                    decrypted, paymentId, amount
+                    decrypted, paymentId, amountPaid
             );
 
             mailService.sendDonationReceiptWithAttachment(
                     decrypted.getEmail(),
                     decrypted.getFirstName() + " " + decrypted.getLastName(),
-                    amount,
+                    amountPaid,
                     paymentId,
                     pdf,
                     "Monthly_Donation_" + paymentId + ".pdf"
@@ -1882,16 +1858,98 @@ public ResponseEntity<?> webhook(@RequestBody String payload,
         } catch (Exception e) {
             e.printStackTrace();
         }
-            });
-        }
-
-        return ResponseEntity.ok("OK");
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500).body("error");
-    }
+    });
 }
+
+//         if (event.startsWith("subscription.")) {
+
+//             JSONObject sub = json.getJSONObject("payload")
+//                     .getJSONObject("subscription")
+//                     .getJSONObject("entity");
+
+//             String subscriptionId = sub.getString("id");
+//             String subStatus = sub.optString("status", "").toUpperCase();
+
+//             donationRepo.findBySubscriptionId(subscriptionId).ifPresent(donor -> {
+
+//                 donor.setSubscriptionStatus(subStatus);
+
+//                 // ✅ AUTHENTICATED / ACTIVE = SUCCESS
+//                 if ("AUTHENTICATED".equals(subStatus) || "ACTIVE".equals(subStatus)) {
+//                     donor.setStatus("SUCCESS");
+//                 }
+
+//                 donationRepo.save(donor);
+//                 System.out.println("✅ subscription update → " + subStatus);
+//             });
+//         }
+
+//         // ------------------------------------------------------------------
+//         // 4️⃣ MONTHLY CHARGE (IMPORTANT FIX)
+//         // ------------------------------------------------------------------
+//         if ("subscription.charged".equals(event)) {
+
+//             JSONObject p = json.getJSONObject("payload")
+//                     .getJSONObject("payment")
+//                     .getJSONObject("entity");
+
+//             String subscriptionId = p.getString("subscription_id");
+//             String paymentId = p.getString("id");
+//             double amountPaid = p.getInt("amount") / 100.0;
+
+//             donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
+
+//                 Donourentity monthly = new Donourentity();
+
+//                 // ✅ Copy NON-ENCRYPTED fields only
+//                 monthly.setFirstName(parent.getFirstName());
+//                 monthly.setLastName(parent.getLastName());
+//                 monthly.setEmail(parent.getEmail());
+//                 monthly.setMobile(parent.getMobile());
+
+//                 monthly.setSubscriptionId(subscriptionId);
+//                 monthly.setPaymentId(paymentId);
+//                 monthly.setAmount(amountPaid);
+//                 monthly.setStatus("SUCCESS");
+//                 monthly.setSubscriptionStatus("CHARGED");
+//                 monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+
+//                 // ✅ DIRECT SAVE (DO NOT call saveDonation)
+//                 donationRepo.save(monthly);
+
+//                 System.out.println("✅ Monthly debit saved (new row)");
+//                 // ✅ SEND MONTHLY RECEIPT
+//         try {
+//             Donourentity decrypted = donationService.findByIdDecrypt(monthly.getId());
+
+//             byte[] pdf = pdfReceiptService.generateMonthlyDebitReceipt(
+//                     decrypted, paymentId, amount
+//             );
+
+//             mailService.sendDonationReceiptWithAttachment(
+//                     decrypted.getEmail(),
+//                     decrypted.getFirstName() + " " + decrypted.getLastName(),
+//                     amount,
+//                     paymentId,
+//                     pdf,
+//                     "Monthly_Donation_" + paymentId + ".pdf"
+//             );
+
+//             System.out.println("📧 Monthly receipt sent");
+
+//         } catch (Exception e) {
+//             e.printStackTrace();
+//         }
+//             });
+//         }
+
+//         return ResponseEntity.ok("OK");
+
+//     } catch (Exception e) {
+//         e.printStackTrace();
+//         return ResponseEntity.status(500).body("error");
+//     }
+// }
 
     // Helper to sync subscription status from webhook into DB
     private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
@@ -1928,6 +1986,7 @@ public ResponseEntity<?> webhook(@RequestBody String payload,
         }
     }
 }
+
 
 
 
