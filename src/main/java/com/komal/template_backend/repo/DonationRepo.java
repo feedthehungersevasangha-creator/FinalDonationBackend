@@ -27,6 +27,7 @@ public interface DonationRepo extends MongoRepository<Donourentity, String> {
     long countByStatusAndDonationDateBetween(String status, LocalDateTime start, LocalDateTime end);
     long countByStatusAndSubscriptionIdIsNullAndDonationDateBetween(String status, LocalDateTime start, LocalDateTime end);
     long countByStatusAndSubscriptionIdIsNotNullAndDonationDateBetween(String status, LocalDateTime start, LocalDateTime end);
+List<Donourentity> findByDonationDateBetween(LocalDateTime from, LocalDateTime to);
 
     // Amount retrieval
     List<Donourentity> findByStatusAndDonationDateBetween(String status, LocalDateTime start, LocalDateTime end);
