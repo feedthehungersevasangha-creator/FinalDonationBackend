@@ -643,6 +643,16 @@ public class Donourentity {
     private String payerEmailHash;
     private String payerContactHash;
     private Integer startDay;
+    private Boolean mandateMailSent = false;
+
+    // ✅ REQUIRED GETTERS & SETTERS
+    public Boolean getMandateMailSent() {
+        return mandateMailSent;
+    }
+
+    public void setMandateMailSent(Boolean mandateMailSent) {
+        this.mandateMailSent = mandateMailSent;
+    }
 
     // populate
 public Integer getStartDay() { return startDay; }
