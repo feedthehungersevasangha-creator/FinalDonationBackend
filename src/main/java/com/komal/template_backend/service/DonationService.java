@@ -684,52 +684,55 @@ private LocalDateTime parseDate(String date) {
     final String SUCCESS = "SUCCESS";
 
     System.out.println("---- getCountsForRange START ----");
-    System.out.println("FROM DATE : " + from);
-    System.out.println("TO DATE   : " + to);
+    System.out.println("FROM : " + from);
+    System.out.println("TO   : " + to);
 
-    // 🔹 OLD METHOD BASE (STATUS FILTER KEPT)
+    // ✅ IMPORTANT FIX: DO NOT filter by status in DB
     List<Donourentity> records =
-            donationRepo.findByStatusAndDonationDateBetween(SUCCESS, from, to);
+            donationRepo.findByDonationDateBetween(from, to);
 
-    System.out.println("RECORDS FETCHED (STATUS+DATE): " + records.size());
+    System.out.println("RECORDS FETCHED BY DATE: " + records.size());
 
-    // ✅ ONE-TIME: orderId + paymentId + SUCCESS
+    // ✅ ONE-TIME SUCCESS
     long oneTime = records.stream()
             .filter(d ->
-                    d.getSubscriptionId() == null &&
                     d.getOrderId() != null &&
                     d.getPaymentId() != null &&
                     SUCCESS.equalsIgnoreCase(d.getStatus())
             )
             .count();
 
-    // ✅ SUBSCRIPTION: subscriptionId + subscriptionStatus=SUCCESS
-    long monthly = records.stream()
+    // ✅ SUBSCRIPTION SUCCESS
+    long subscription = records.stream()
             .filter(d ->
                     d.getSubscriptionId() != null &&
                     SUCCESS.equalsIgnoreCase(d.getSubscriptionStatus())
             )
             .count();
 
-    long total = oneTime + monthly;
+    long total = oneTime + subscription;
 
     double totalAmount = records.stream()
+            .filter(d ->
+                    SUCCESS.equalsIgnoreCase(d.getStatus()) ||
+                    SUCCESS.equalsIgnoreCase(d.getSubscriptionStatus())
+            )
             .mapToDouble(Donourentity::getAmount)
             .sum();
 
-    System.out.println("ONE-TIME COUNT       : " + oneTime);
-    System.out.println("SUBSCRIPTION COUNT   : " + monthly);
-    System.out.println("TOTAL COUNT          : " + total);
-    System.out.println("TOTAL AMOUNT         : " + totalAmount);
+    System.out.println("ONE-TIME COUNT     : " + oneTime);
+    System.out.println("SUBSCRIPTION COUNT : " + subscription);
+    System.out.println("TOTAL COUNT        : " + total);
     System.out.println("---- getCountsForRange END ----");
 
     return Map.of(
             "total", total,
             "oneTime", oneTime,
-            "monthly", monthly,
+            "monthly", subscription,
             "totalAmount", totalAmount
     );
 }
+
 public Map<String, Object> getUniversalCounts(String fromDate, String toDate) {
 
     final String SUCCESS = "SUCCESS";
