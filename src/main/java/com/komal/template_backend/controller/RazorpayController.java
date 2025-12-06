@@ -6,7 +6,7 @@
 // import com.komal.template_backend.repo.DonationRepo;
 // import com.komal.template_backend.service.DonationService;
 // import com.komal.template_backend.service.MailService;
-// import com.komal.template_backend.service.pdfReceiptService;
+// import com.komal.template_backend.service.pdfReceiptServiceee;
 // import com.razorpay.Order;
 // import com.razorpay.RazorpayClient;
 // import com.razorpay.Subscription;
@@ -44,7 +44,7 @@
 //     DonationService donationService;
 
 //     @Autowired
-//     private pdfReceiptService pdfReceiptServic;
+//     private pdfReceiptServiceee pdfReceiptServicee;
 //     @Autowired
 //     private MailService mailService;
 
@@ -190,17 +190,17 @@
 //                         // Choose correct receipt type and generate appropriate PDF
 //                         byte[] pdf;
 //                         if ("onetime".equalsIgnoreCase(decrypted.getFrequency())) {
-//                             pdf = pdfReceiptServic.generateOneTimeDonationReceipt(
+//                             pdf = pdfReceiptServicee.generateOneTimeDonationReceipt(
 //                                     decrypted,
 //                                     decrypted.getPaymentId(),
 //                                     decrypted.getAmount()
 //                             );
 //                         } else if (decrypted.getSubscriptionId() != null && decrypted.getPaymentId() == null) {
 //                             // Mandate confirmation (subscription created but no payment yet)
-//                             pdf = pdfReceiptServic.generateMandateConfirmation(decrypted);
+//                             pdf = pdfReceiptServicee.generateMandateConfirmation(decrypted);
 //                         } else {
 //                             // Monthly debit / subscription payment
-//                             pdf = pdfReceiptServic.generateMonthlyDebitReceipt(
+//                             pdf = pdfReceiptServicee.generateMonthlyDebitReceipt(
 //                                     decrypted,
 //                                     decrypted.getPaymentId(),
 //                                     decrypted.getAmount()
@@ -696,7 +696,7 @@
 // import com.komal.template_backend.repo.DonationRepo;
 // import com.komal.template_backend.service.DonationService;
 // import com.komal.template_backend.service.MailService;
-// import com.komal.template_backend.service.pdfReceiptService;
+// import com.komal.template_backend.service.pdfReceiptServiceee;
 // import com.razorpay.Order;
 // import com.razorpay.Plan;
 // import com.razorpay.RazorpayClient;
@@ -734,7 +734,7 @@
 //     private DonationService donationService;
 
 //     @Autowired
-//     private pdfReceiptService pdfReceiptServic;
+//     private pdfReceiptServiceee pdfReceiptServicee;
 
 //     @Autowired
 //     private MailService mailService;
@@ -842,7 +842,7 @@
 //                 try {
 //                     Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
 //                     if (decrypted != null) {
-//                         byte[] pdf = pdfReceiptServic.generateOneTimeDonationReceipt(
+//                         byte[] pdf = pdfReceiptServicee.generateOneTimeDonationReceipt(
 //                                 decrypted,
 //                                 decrypted.getPaymentId(),
 //                                 decrypted.getAmount()
@@ -1258,8 +1258,8 @@ import com.komal.template_backend.model.Donourentity;
 import com.komal.template_backend.repo.DonationRepo;
 import com.komal.template_backend.service.DonationService;
 import com.komal.template_backend.service.MailService;
-// import com.komal.template_backend.service.pdfReceiptService;
-import com.komal.template_backend.service.PdfReceiptServic;
+// import com.komal.template_backend.service.pdfReceiptServiceee;
+import com.komal.template_backend.service.pdfReceiptService;
 import com.razorpay.Order;
 import com.razorpay.Plan;
 import com.razorpay.RazorpayClient;
@@ -1297,9 +1297,9 @@ public class RazorpayController {
     private DonationService donationService;
 
     // @Autowired
-    // private pdfReceiptService pdfReceiptServic;
+    // private pdfReceiptServiceee pdfReceiptServicee;
     @Autowired
-private PdfReceiptServic pdfReceiptService;
+private pdfReceiptService pdfReceiptService;
 ;
 
 
@@ -1427,7 +1427,7 @@ private PdfReceiptServic pdfReceiptService;
                 try {
                     Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
                     if (decrypted != null) {
-                        byte[] pdf = pdfReceiptServic.generateOneTimeDonationReceipt(
+                        byte[] pdf = pdfReceiptService.generateOneTimeDonationReceipt(
                                 decrypted,
                                 decrypted.getPaymentId(),
                                 decrypted.getAmount()
@@ -1923,7 +1923,7 @@ public ResponseEntity<?> webhook(@RequestBody String payload,
 //         try {
 //             Donourentity decrypted = donationService.findByIdDecrypt(monthly.getId());
 
-//             byte[] pdf = pdfReceiptService.generateMonthlyDebitReceipt(
+//             byte[] pdf = pdfReceiptServiceee.generateMonthlyDebitReceipt(
 //                     decrypted, paymentId, amount
 //             );
 
@@ -1987,6 +1987,7 @@ public ResponseEntity<?> webhook(@RequestBody String payload,
         }
     }
 }
+
 
 
 
