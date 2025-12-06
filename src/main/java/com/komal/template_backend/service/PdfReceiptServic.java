@@ -529,6 +529,12 @@ public class PdfReceiptServic {
 
     private final String logoResource = "/logo.png";
     private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a");
+private String displayReceiptType(Donourentity d) {
+    if ("SUBSCRIPTION".equalsIgnoreCase(d.getReceiptType())) {
+        return "e-Mandate";
+    }
+    return "One-Time Donation";
+}
 
     // -----------------------------
     // FONT LOADER
@@ -618,18 +624,16 @@ public class PdfReceiptServic {
             cs.beginText();
             cs.setFont(font, 12);
             cs.newLineAtOffset(margin, y);
-
+            cs.showText("Donation Type: " + displayReceiptType(d));
+            cs.newLineAtOffset(0, -16);
             cs.showText("Receipt No: " + safe(d.getInvoiceNumber()));
             cs.newLineAtOffset(0, -16);
             cs.showText("Financial Year: 2024-25");
             cs.newLineAtOffset(0, -16);
             cs.showText("Date of Print: " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
-
             cs.endText();
-
             // TO Block
             y -= 80;
-
             cs.beginText();
             cs.setFont(font, 12);
             cs.newLineAtOffset(margin, y);
@@ -693,8 +697,11 @@ public class PdfReceiptServic {
             cs.beginText();
             cs.setFont(font, 16);
             cs.newLineAtOffset(margin, y - 10);
-            cs.showText("Mandate Registration Confirmation");
+            // cs.showText("Mandate Registration Confirmation");
+            SUCCESS.equalsIgnoreCase(d.getSubscriptionStatus())
+
             cs.endText();
+            
 
             y -= 70;
 
@@ -745,7 +752,8 @@ public class PdfReceiptServic {
             cs.beginText();
             cs.setFont(font, 16);
             cs.newLineAtOffset(margin, y - 10);
-            cs.showText("Monthly Donation Receipt");
+            // cs.showText("Monthly Donation Receipt");
+            cs.showText("Monthly e-Mandate Donation Receipt");
             cs.endText();
 
             y -= 70;
@@ -754,7 +762,10 @@ public class PdfReceiptServic {
             cs.beginText();
             cs.setFont(font, 12);
             cs.newLineAtOffset(margin, y);
-
+            cs.showText("Donation Type: " + displayReceiptType(d));
+            cs.newLineAtOffset(0, -16);
+cs.showText("Receipt No: " + safe(d.getInvoiceNumber()));
+            cs.newLineAtOffset(0, -16);
             cs.showText("Donor ID: " + safe(d.getId()));
             cs.newLineAtOffset(0, -16);
             cs.showText("Donor: " + safe(d.getFirstName()) + " " + safe(d.getLastName()));
