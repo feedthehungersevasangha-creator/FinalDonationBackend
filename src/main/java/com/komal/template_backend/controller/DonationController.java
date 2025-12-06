@@ -245,6 +245,7 @@ public class DonationController {
             return ResponseEntity.status(500).body("Failed to generate receipt: " + e.getMessage());
         }
     }
+
 //     @GetMapping("/donation-counts")
 // public ResponseEntity<?> getDonationCounts(
 //         @RequestParam(required = false) String from,
@@ -258,17 +259,58 @@ public class DonationController {
 //         return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
 //     }
 // }
-    @GetMapping("/donation-counts")
+@GetMapping("/donation-counts")
 public ResponseEntity<?> getDonationCounts(
         @RequestParam(required = false) String from,
         @RequestParam(required = false) String to
 ) {
     try {
-        Map<String, Object> counts = donationService.getUniversalCounts(from, to);
-        return ResponseEntity.ok(Map.of("success", true, "counts", counts));
+        Map<String, Object> response = new HashMap<>();
+
+        // --------------------------
+        // OVERALL
+        // --------------------------
+        List<Donourentity> all = donationRepo.findAll();
+        response.put("overall", calculateCounts(all));
+
+        // --------------------------
+        // TODAY
+        // --------------------------
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+        LocalDateTime startToday = today.atStartOfDay();
+        LocalDateTime endToday = startToday.plusDays(1);
+        response.put("today", getCountsForRange(startToday, endToday));
+
+        // --------------------------
+        // THIS MONTH
+        // --------------------------
+        LocalDateTime startMonth = today.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime endMonth = startMonth.plusMonths(1);
+        response.put("thisMonth", getCountsForRange(startMonth, endMonth));
+
+        // --------------------------
+        // CUSTOM RANGE (OPTIONAL)
+        // --------------------------
+        if (from != null && !from.isBlank() && to != null && !to.isBlank()) {
+            LocalDateTime fromDate = LocalDate.parse(from).atStartOfDay();
+            LocalDateTime toDate = LocalDate.parse(to).plusDays(1).atStartOfDay();
+            response.put("custom", getCountsForRange(fromDate, toDate));
+        } 
+        else {
+            response.put("custom", calculateCounts(all));
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "counts", response
+        ));
+
     } catch (Exception e) {
         e.printStackTrace();
-        return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
+        return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+        ));
     }
 }
 
