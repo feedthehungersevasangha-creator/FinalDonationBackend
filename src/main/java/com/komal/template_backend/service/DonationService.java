@@ -681,24 +681,66 @@ private LocalDateTime parseDate(String date) {
 }
     public Map<String, Object> getCountsForRange(LocalDateTime from, LocalDateTime to) {
 
-    List<Donourentity> records =
-            donationRepo.findByDonationDateBetween(from, to);
-    System.out.println("RECORD COUNT: " + records.size());
-    Map<String, Long> counts = calculateCounts(records);
+    // fetch all (date filter in Java)
+    List<Donourentity> all = donationRepo.findAll();
+
+    List<Donourentity> records = all.stream()
+        .filter(d -> d.getDonationDate() != null)
+        .filter(d -> !d.getDonationDate().isBefore(from)
+                  && d.getDonationDate().isBefore(to))
+        .toList();
+
+    long oneTime = records.stream()
+        .filter(d ->
+            d.getOrderId() != null &&
+            d.getPaymentId() != null &&
+            "SUCCESS".equalsIgnoreCase(d.getStatus())
+        )
+        .count();
+
+    long subscription = records.stream()
+        .filter(d ->
+            d.getSubscriptionId() != null &&
+            "SUCCESS".equalsIgnoreCase(d.getSubscriptionStatus())
+        )
+        .count();
 
     double totalAmount = records.stream()
-            .filter(d ->
-                    "SUCCESS".equalsIgnoreCase(d.getStatus()) ||
-                    "SUCCESS".equalsIgnoreCase(d.getSubscriptionStatus())
-            )
-            .mapToDouble(Donourentity::getAmount)
-            .sum();
+        .filter(d ->
+            "SUCCESS".equalsIgnoreCase(d.getStatus()) ||
+            "SUCCESS".equalsIgnoreCase(d.getSubscriptionStatus())
+        )
+        .mapToDouble(Donourentity::getAmount)
+        .sum();
 
     return Map.of(
-            "counts", counts,
-            "totalAmount", totalAmount
+        "total", oneTime + subscription,
+        "oneTime", oneTime,
+        "monthly", subscription,
+        "totalAmount", totalAmount
     );
 }
+
+//     public Map<String, Object> getCountsForRange(LocalDateTime from, LocalDateTime to) {
+
+//     List<Donourentity> records =
+//             donationRepo.findByDonationDateBetween(from, to);
+//     System.out.println("RECORD COUNT: " + records.size());
+//     Map<String, Long> counts = calculateCounts(records);
+
+//     double totalAmount = records.stream()
+//             .filter(d ->
+//                     "SUCCESS".equalsIgnoreCase(d.getStatus()) ||
+//                     "SUCCESS".equalsIgnoreCase(d.getSubscriptionStatus())
+//             )
+//             .mapToDouble(Donourentity::getAmount)
+//             .sum();
+
+//     return Map.of(
+//             "counts", counts,
+//             "totalAmount", totalAmount
+//     );
+// }
 
 public Map<String, Long> calculateCounts(List<Donourentity> list) {
 
