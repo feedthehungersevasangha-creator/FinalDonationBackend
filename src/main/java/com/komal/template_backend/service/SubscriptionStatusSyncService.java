@@ -1,97 +1,98 @@
-package com.komal.template_backend.service;
+@Scheduled(fixedDelay = 10 * 60 * 1000)
+public void syncSubscriptionsFromRazorpay() {
 
-import com.komal.template_backend.model.Donourentity;
-import com.komal.template_backend.repo.DonationRepo;
-import com.razorpay.RazorpayClient;
-import com.razorpay.Subscription;
-import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
+    System.out.println("🔁 Mongo Sync: Subscription reconciliation started");
 
-import java.util.List;
+    List<Donourentity> donors = donationRepo.findActiveSubscriptions();
 
-@Service
-public class SubscriptionStatusSyncService {
-
-    @Value("${razorpay.key_id}")
-    private String keyId;
-
-    @Value("${razorpay.key_secret}")
-    private String keySecret;
-
-    private final DonationRepo donationRepo;
-
-    public SubscriptionStatusSyncService(DonationRepo donationRepo) {
-        this.donationRepo = donationRepo;
+    if (donors.isEmpty()) {
+        System.out.println("ℹ No active subscriptions to sync");
+        return;
     }
 
-    // ✅ Runs every 10 minutes
-    @Scheduled(fixedDelay = 10 * 60 * 1000)
-    public void syncSubscriptionsFromRazorpay() {
+    try {
+        RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
-        System.out.println("🔁 Mongo Sync: Subscription reconciliation started");
+        for (Donourentity donor : donors) {
 
-        List<Donourentity> donors =
-                donationRepo.findActiveSubscriptions();
+            String subId = donor.getSubscriptionId();
+            if (subId == null) continue;
 
-        if (donors.isEmpty()) {
-            System.out.println("ℹ No active subscriptions to sync");
-            return;
-        }
+            try {
+                Subscription sub = client.subscriptions.fetch(subId);
+                JSONObject json = sub.toJson();
+                String razorpayStatus =
+                        json.optString("status", "")
+                            .toUpperCase();
 
-        try {
-            RazorpayClient client =
-                    new RazorpayClient(keyId, keySecret);
+                String oldStatus = donor.getSubscriptionStatus();
 
-            for (Donourentity donor : donors) {
+                // ✅ STATUS CHANGE DETECTED
+                if (!razorpayStatus.equals(oldStatus)) {
 
-                String subId = donor.getSubscriptionId();
-                if (subId == null) continue;
+                    donor.setSubscriptionStatus(razorpayStatus);
 
-                try {
-                    Subscription sub =
-                            client.subscriptions.fetch(subId);
+                    if ("AUTHENTICATED".equals(razorpayStatus)
+                            || "ACTIVE".equals(razorpayStatus)) {
 
-                    JSONObject json = sub.toJson();
-                    String razorpayStatus =
-                            json.optString("status", "")
-                                .toUpperCase();
+                        donor.setStatus("SUCCESS");
 
-                    if (!razorpayStatus.equals(donor.getSubscriptionStatus())) {
+                        // ✅ SEND EMAIL ONLY ON FIRST AUTHENTICATION
+                        if (Boolean.FALSE.equals(donor.getMandateMailSent())) {
 
-                        donor.setSubscriptionStatus(razorpayStatus);
+                            try {
+                                Donourentity decrypted =
+                                        donationService.findByIdDecrypt(donor.getId());
 
-                        if ("AUTHENTICATED".equals(razorpayStatus)
-                                || "ACTIVE".equals(razorpayStatus)) {
+                                byte[] pdf =
+                                        pdfReceiptService.generateMandateConfirmation(decrypted);
 
-                            donor.setStatus("SUCCESS");
+                                mailService.sendDonationReceiptWithAttachment(
+                                        decrypted.getEmail(),
+                                        decrypted.getFirstName() + " " + decrypted.getLastName(),
+                                        decrypted.getMonthlyAmount(),
+                                        decrypted.getSubscriptionId(),
+                                        pdf,
+                                        "Mandate_Confirmation_" + decrypted.getSubscriptionId() + ".pdf"
+                                );
 
-                        } else if ("HALTED".equals(razorpayStatus)
-                                || "CANCELLED".equals(razorpayStatus)) {
+                                donor.setMandateMailSent(true);
+                                System.out.println(
+                                        "📧 Mandate confirmation email sent for " + subId
+                                );
 
-                            donor.setStatus("FAILED");
+                            } catch (Exception mailEx) {
+                                System.out.println(
+                                        "⚠ Failed to send mandate mail for " + subId
+                                );
+                                mailEx.printStackTrace();
+                            }
                         }
 
-                        donationRepo.save(donor);
+                    } else if ("HALTED".equals(razorpayStatus)
+                            || "CANCELLED".equals(razorpayStatus)) {
 
-                        System.out.println(
-                                "✅ Mongo Sync updated: " + subId
-                                + " → " + razorpayStatus
-                        );
+                        donor.setStatus("FAILED");
                     }
 
-                } catch (Exception ex) {
-                    System.out.println(
-                            "⚠ Failed to sync subscription " + subId
-                    );
-                    ex.printStackTrace();
-                }
-            }
+                    donationRepo.save(donor);
 
-        } catch (Exception e) {
-            System.out.println("❌ Mongo sync job crashed");
-            e.printStackTrace();
+                    System.out.println(
+                            "✅ Mongo Sync updated: " + subId
+                                    + " → " + razorpayStatus
+                    );
+                }
+
+            } catch (Exception ex) {
+                System.out.println(
+                        "⚠ Failed to sync subscription " + subId
+                );
+                ex.printStackTrace();
+            }
         }
+
+    } catch (Exception e) {
+        System.out.println("❌ Mongo sync job crashed");
+        e.printStackTrace();
     }
 }
