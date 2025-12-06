@@ -248,6 +248,40 @@ public class DonationController {
             return ResponseEntity.status(500).body("Failed to generate receipt: " + e.getMessage());
         }
     }
+@GetMapping("/donation-counts")
+public ResponseEntity<?> getDonationCounts(
+        @RequestParam(required = false) String from,
+        @RequestParam(required = false) String to
+) {
+    try {
+        System.out.println("===== /donation-counts API HIT =====");
+        System.out.println("FROM param: " + from);
+        System.out.println("TO param  : " + to);
+
+        Map<String, Object> counts =
+                donationService.getUniversalCounts(from, to);
+
+        System.out.println("===== /donation-counts API SUCCESS =====");
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "counts", counts
+                )
+        );
+
+    } catch (Exception e) {
+        System.out.println("❌ ERROR in /donation-counts");
+        e.printStackTrace();
+
+        return ResponseEntity.status(500).body(
+                Map.of(
+                        "success", false,
+                        "message", e.getMessage()
+                )
+        );
+    }
+}
 
 //     @GetMapping("/donation-counts")
 // public ResponseEntity<?> getDonationCounts(
@@ -262,107 +296,6 @@ public class DonationController {
 //         return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
 //     }
 // }
-// @GetMapping("/donation-counts")
-//     public ResponseEntity<?> getDonationCounts(
-//             @RequestParam(required = false) String from,
-//             @RequestParam(required = false) String to) {
 
-//         try {
-//             Map<String, Object> response = new HashMap<>();
-
-//             // OVERALL
-//             List<Donourentity> all = donationRepo.findAll();
-//             response.put("overall", donationService.calculateCounts(all));
-
-//             // TODAY
-//             LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
-//             LocalDateTime startToday = today.atStartOfDay();
-//             LocalDateTime endToday = startToday.plusDays(1);
-//             response.put("today", donationService.getCountsForRange(startToday, endToday));
-
-//             // THIS MONTH
-//             LocalDateTime startMonth = today.withDayOfMonth(1).atStartOfDay();
-//             LocalDateTime endMonth = startMonth.plusMonths(1);
-//             response.put("thisMonth", donationService.getCountsForRange(startMonth, endMonth));
-
-//             // CUSTOM RANGE
-//             if (from != null && !from.isBlank() && to != null && !to.isBlank()) {
-//                 LocalDateTime fromDate = LocalDate.parse(from).atStartOfDay();
-//                 LocalDateTime toDate = LocalDate.parse(to).plusDays(1).atStartOfDay();
-
-//                 response.put("custom", donationService.getCountsForRange(fromDate, toDate));
-//             } else {
-//                 response.put("custom", donationService.calculateCounts(all));
-//             }
-
-//             return ResponseEntity.ok(Map.of("success", true, "counts", response));
-
-//         } catch (Exception e) {
-//             e.printStackTrace();
-//             return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
-//         }
-//     }
-@GetMapping("/donation-counts")
-public ResponseEntity<?> getDonationCounts(
-        @RequestParam(required = false) String from,
-        @RequestParam(required = false) String to
-) {
-    try {
-        Map<String, Object> response = new HashMap<>();
-
-        // ===== OVERALL =====
-        response.put("overall",
-                donationService.calculateCounts(donationRepo.findAll())
-        );
-
-        // ===== TODAY =====
-        LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
-        LocalDateTime startToday = today.atStartOfDay();
-        LocalDateTime endToday = startToday.plusDays(1);
-
-        response.put("today",
-                donationService.getCountsForRange(startToday, endToday)
-        );
-
-        // ===== THIS MONTH =====
-        LocalDateTime startMonth = today.withDayOfMonth(1).atStartOfDay();
-        LocalDateTime endMonth = startMonth.plusMonths(1);
-
-        response.put("thisMonth",
-                donationService.getCountsForRange(startMonth, endMonth)
-        );
-
-        // ===== CUSTOM RANGE =====
-        if (from != null && !from.isBlank() && to != null && !to.isBlank()) {
-
-            LocalDateTime fromDate = LocalDate.parse(from)
-                    .atStartOfDay(ZoneId.of("Asia/Kolkata"))
-                    .toLocalDateTime();
-
-            LocalDateTime toDate = LocalDate.parse(to)
-                    .plusDays(1)
-                    .atStartOfDay(ZoneId.of("Asia/Kolkata"))
-                    .toLocalDateTime();
-
-            response.put("custom",
-                    donationService.getCountsForRange(fromDate, toDate)
-            );
-        } else {
-            response.put("custom", response.get("overall"));
-        }
-
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "counts", response
-        ));
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500).body(Map.of(
-                "success", false,
-                "message", e.getMessage()
-        ));
-    }
-}
 
 }
