@@ -207,106 +207,112 @@ public class DonationController {
         }
     }
 
-    // @GetMapping("/download/{id}")
-    // public ResponseEntity<?> downloadReceipt(@PathVariable String id) {
-    //     try {
-    //         Donourentity d = donationService.findByIdDecrypt(id);
-
-    //         if (d == null) {
-    //             return ResponseEntity.badRequest().body("Invalid donor ID");
-    //         }
-
-    //         byte[] pdf;
-
-    //         // ONE-TIME PAYMENT
-    //         if (d.getFrequency().equalsIgnoreCase("onetime")) {
-    //             pdf = pdfReceiptService.generateOneTimeDonationReceipt(
-    //                     d,
-    //                     d.getPaymentId(),
-    //                     d.getAmount()
-    //             );
-    //         }
-    //         // SUBSCRIPTION MANDATE (first time)
-    //         else if (d.getSubscriptionId() != null && d.getPaymentId() == null) {
-    //             pdf = pdfReceiptService.generateMandateConfirmation(d);
-    //         }
-    //         // MONTHLY CHARGE
-    //         else {
-    //             pdf = pdfReceiptService.generateMonthlyDebitReceipt(
-    //                     d,
-    //                     d.getPaymentId(),
-    //                     d.getAmount()
-    //             );
-    //         }
-
-    //         return ResponseEntity.ok()
-    //                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Receipt_" + d.getId() + ".pdf")
-    //                 .contentType(MediaType.APPLICATION_PDF)
-    //                 .body(pdf);
-
-    //     } catch (Exception e) {
-    //         return ResponseEntity.status(500).body("Failed to generate receipt: " + e.getMessage());
-    //     }
-    // }
     @GetMapping("/download/{id}")
-public ResponseEntity<?> downloadReceipt(@PathVariable String id) {
-    try {
-        Donourentity d = donationService.findByIdDecrypt(id);
+    public ResponseEntity<?> downloadReceipt(@PathVariable String id) {
+            System.out.println("📥 Receipt download request for ID: " + id);
+        try {
+            Donourentity d = donationService.findByIdDecrypt(id);
 
-        if (d == null) {
-            return ResponseEntity.badRequest().body("Invalid donor ID");
+            if (d == null) {
+                return ResponseEntity.badRequest().body("Invalid donor ID");
+            }
+ System.out.println("✅ Donor found:");
+        System.out.println("   ID = " + d.getId());
+        System.out.println("   Frequency = " + d.getFrequency());
+        System.out.println("   SubscriptionId = " + d.getSubscriptionId());
+        System.out.println("   PaymentId = " + d.getPaymentId());
+        System.out.println("   Amount = " + d.getAmount());
+            byte[] pdf;
+
+            // ONE-TIME PAYMENT
+            if (d.getFrequency().equalsIgnoreCase("onetime")) {
+                pdf = pdfReceiptService.generateOneTimeDonationReceipt(
+                        d,
+                        d.getPaymentId(),
+                        d.getAmount()
+                );
+            }
+            // SUBSCRIPTION MANDATE (first time)
+            else if (d.getSubscriptionId() != null && d.getPaymentId() == null) {
+                pdf = pdfReceiptService.generateMandateConfirmation(d);
+            }
+            // MONTHLY CHARGE
+            else {
+                pdf = pdfReceiptService.generateMonthlyDebitReceipt(
+                        d,
+                        d.getPaymentId(),
+                        d.getAmount()
+                );
+            }
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Receipt_" + d.getId() + ".pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to generate receipt: " + e.getMessage());
         }
-
-        byte[] pdf;
-
-        // ✅ 1️⃣ ONE-TIME DONATION
-        if ("onetime".equalsIgnoreCase(d.getFrequency())) {
-
-            pdf = pdfReceiptService.generateOneTimeDonationReceipt(
-                    d,
-                    d.getPaymentId(),
-                    d.getAmount()
-            );
-
-        }
-        // ✅ 2️⃣ MANDATE CONFIRMATION (subscription created but no monthly debit yet)
-        else if (d.getSubscriptionId() != null
-                && d.getRazorpayMandateId() != null
-                && (d.getSubscriptionStatus() != null &&
-                    d.getSubscriptionStatus().equalsIgnoreCase("AUTHENTICATED"))) {
-
-            pdf = pdfReceiptService.generateMandateConfirmation(d);
-
-        }
-        // ✅ 3️⃣ MONTHLY DEBIT (subscription.charged rows)
-        else if (d.getSubscriptionId() != null
-                && d.getPaymentId() != null
-                && d.getAmount() > 0) {
-
-            pdf = pdfReceiptService.generateMonthlyDebitReceipt(
-                    d,
-                    d.getPaymentId(),
-                    d.getAmount()
-            );
-
-        }
-        else {
-            return ResponseEntity.badRequest()
-                    .body("Receipt not available for this donation yet");
-        }
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=Receipt_" + d.getId() + ".pdf")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdf);
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500)
-                .body("Failed to generate receipt: " + e.getMessage());
     }
-}
+//     @GetMapping("/download/{id}")
+// public ResponseEntity<?> downloadReceipt(@PathVariable String id) {
+//     try {
+//         Donourentity d = donationService.findByIdDecrypt(id);
+
+//         if (d == null) {
+//             return ResponseEntity.badRequest().body("Invalid donor ID");
+//         }
+
+//         byte[] pdf;
+
+//         // ✅ 1️⃣ ONE-TIME DONATION
+//         if ("onetime".equalsIgnoreCase(d.getFrequency())) {
+
+//             pdf = pdfReceiptService.generateOneTimeDonationReceipt(
+//                     d,
+//                     d.getPaymentId(),
+//                     d.getAmount()
+//             );
+
+//         }
+//         // ✅ 2️⃣ MANDATE CONFIRMATION (subscription created but no monthly debit yet)
+//         else if (d.getSubscriptionId() != null
+//                 && d.getRazorpayMandateId() != null
+//                 && (d.getSubscriptionStatus() != null &&
+//                     d.getSubscriptionStatus().equalsIgnoreCase("AUTHENTICATED"))) {
+
+//             pdf = pdfReceiptService.generateMandateConfirmation(d);
+
+//         }
+//         // ✅ 3️⃣ MONTHLY DEBIT (subscription.charged rows)
+//         else if (d.getSubscriptionId() != null
+//                 && d.getPaymentId() != null
+//                 && d.getAmount() > 0) {
+
+//             pdf = pdfReceiptService.generateMonthlyDebitReceipt(
+//                     d,
+//                     d.getPaymentId(),
+//                     d.getAmount()
+//             );
+
+//         }
+//         else {
+//             return ResponseEntity.badRequest()
+//                     .body("Receipt not available for this donation yet");
+//         }
+
+//         return ResponseEntity.ok()
+//                 .header(HttpHeaders.CONTENT_DISPOSITION,
+//                         "attachment; filename=Receipt_" + d.getId() + ".pdf")
+//                 .contentType(MediaType.APPLICATION_PDF)
+//                 .body(pdf);
+
+//     } catch (Exception e) {
+//         e.printStackTrace();
+//         return ResponseEntity.status(500)
+//                 .body("Failed to generate receipt: " + e.getMessage());
+//     }
+// }
 
 @GetMapping("/donation-counts")
 public ResponseEntity<?> getDonationCounts(
