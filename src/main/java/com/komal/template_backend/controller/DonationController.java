@@ -257,39 +257,50 @@ public class DonationController {
             return ResponseEntity.status(500).body("Failed to generate receipt: " + e.getMessage());
         }
     }
-   @GetMapping("/donation-counts")
-public ResponseEntity<?> getDonationCounts(
-        @RequestParam(required = false) String from,
-        @RequestParam(required = false) String to) {
+//    @GetMapping("/donation-counts")
+// public ResponseEntity<?> getDonationCounts(
+//         @RequestParam(required = false) String from,
+//         @RequestParam(required = false) String to) {
 
-    try {
-        Map<String, Object> counts;
+//     try {
+//         Map<String, Object> counts;
 
-        if (from != null && !from.isBlank() && to != null && !to.isBlank()) {
-            LocalDateTime fromDate =
-                    LocalDate.parse(from).atStartOfDay(ZoneId.of("Asia/Kolkata")).toLocalDateTime();
-            LocalDateTime toDate =
-                    LocalDate.parse(to).atTime(23, 59, 59)
-                            .atZone(ZoneId.of("Asia/Kolkata"))
-                            .toLocalDateTime();
+//         if (from != null && !from.isBlank() && to != null && !to.isBlank()) {
+//             LocalDateTime fromDate =
+//                     LocalDate.parse(from).atStartOfDay(ZoneId.of("Asia/Kolkata")).toLocalDateTime();
+//             LocalDateTime toDate =
+//                     LocalDate.parse(to).atTime(23, 59, 59)
+//                             .atZone(ZoneId.of("Asia/Kolkata"))
+//                             .toLocalDateTime();
 
-            counts = dashboardService.getCountsForRange(fromDate, toDate);
-        } else {
-            counts = dashboardService.getOverallCounts();
-        }
+//             counts = dashboardService.getCountsForRange(fromDate, toDate);
+//         } else {
+//             counts = dashboardService.getOverallCounts();
+//         }
+
+//         return ResponseEntity.ok(Map.of(
+//                 "success", true,
+//                 "counts", counts
+//         ));
+
+//     } catch (Exception e) {
+//         e.printStackTrace();
+//         return ResponseEntity.status(500).body(
+//                 Map.of("success", false, "message", "Failed to fetch counts")
+//         );
+//     }
+// }
+     @GetMapping("/donation-counts")
+    public ResponseEntity<?> getDonationCounts() {
+
+        Map<String, Object> counts =
+                dashboardService.getDashboardCounts();
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "counts", counts
         ));
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500).body(
-                Map.of("success", false, "message", "Failed to fetch counts")
-        );
     }
-}
 
 
 
