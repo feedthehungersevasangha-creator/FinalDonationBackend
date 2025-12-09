@@ -61,7 +61,17 @@ import java.util.List;
 import java.util.Optional;
 
 public interface DonationRepo extends MongoRepository<Donourentity, String> {
+  // ✅ One-time donations
+    long countByRecordTypeAndStatus(String recordType, String status);
 
+    // ✅ Mandates (parent subscription row)
+    long countByRecordTypeAndMandateStatus(String recordType, String mandateStatus);
+
+    // ✅ Monthly debits
+    long countByRecordTypeAndStatusAndSubscriptionIdIsNotNull(
+            String recordType,
+            String status
+    );
     // ------------------------------------------------------------------
     // BASIC LOOKUPS
     // ------------------------------------------------------------------
