@@ -119,6 +119,7 @@ import com.komal.template_backend.model.Donourentity;
 import com.komal.template_backend.repo.DonationRepo;
 import com.komal.template_backend.service.DonationService;
 import com.komal.template_backend.service.DonorsFilteration;
+import com.komal.template_backend.service.DashboardService;
 import com.komal.template_backend.service.PdfReceiptServic;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -143,10 +144,12 @@ public class DonationController {
 
     @Autowired
     private DonationRepo donationRepo;
+        private final DashboardService dashboardService;
 
     public DonationController(DonationService donationService, DonorsFilteration donorsFilteration) {
         this.donationService = donationService;
         this.donorsFilteration = donorsFilteration;
+        this.dashboardService = dashboardService;
     }
 
 
@@ -254,114 +257,11 @@ public class DonationController {
             return ResponseEntity.status(500).body("Failed to generate receipt: " + e.getMessage());
         }
     }
-//     @GetMapping("/download/{id}")
-// public ResponseEntity<?> downloadReceipt(@PathVariable String id) {
-//     try {
-//         Donourentity d = donationService.findByIdDecrypt(id);
+    @GetMapping("/counts")
+    public ResponseEntity<?> getCounts() {
+        return ResponseEntity.ok(dashboardService.getDashboardCounts());
+    }
 
-//         if (d == null) {
-//             return ResponseEntity.badRequest().body("Invalid donor ID");
-//         }
-
-//         byte[] pdf;
-
-//         // ✅ 1️⃣ ONE-TIME DONATION
-//         if ("onetime".equalsIgnoreCase(d.getFrequency())) {
-
-//             pdf = pdfReceiptService.generateOneTimeDonationReceipt(
-//                     d,
-//                     d.getPaymentId(),
-//                     d.getAmount()
-//             );
-
-//         }
-//         // ✅ 2️⃣ MANDATE CONFIRMATION (subscription created but no monthly debit yet)
-//         else if (d.getSubscriptionId() != null
-//                 && d.getRazorpayMandateId() != null
-//                 && (d.getSubscriptionStatus() != null &&
-//                     d.getSubscriptionStatus().equalsIgnoreCase("AUTHENTICATED"))) {
-
-//             pdf = pdfReceiptService.generateMandateConfirmation(d);
-
-//         }
-//         // ✅ 3️⃣ MONTHLY DEBIT (subscription.charged rows)
-//         else if (d.getSubscriptionId() != null
-//                 && d.getPaymentId() != null
-//                 && d.getAmount() > 0) {
-
-//             pdf = pdfReceiptService.generateMonthlyDebitReceipt(
-//                     d,
-//                     d.getPaymentId(),
-//                     d.getAmount()
-//             );
-
-//         }
-//         else {
-//             return ResponseEntity.badRequest()
-//                     .body("Receipt not available for this donation yet");
-//         }
-
-//         return ResponseEntity.ok()
-//                 .header(HttpHeaders.CONTENT_DISPOSITION,
-//                         "attachment; filename=Receipt_" + d.getId() + ".pdf")
-//                 .contentType(MediaType.APPLICATION_PDF)
-//                 .body(pdf);
-
-//     } catch (Exception e) {
-//         e.printStackTrace();
-//         return ResponseEntity.status(500)
-//                 .body("Failed to generate receipt: " + e.getMessage());
-//     }
-// }
-
-// @GetMapping("/donation-counts")
-// public ResponseEntity<?> getDonationCounts(
-//         @RequestParam(required = false) String from,
-//         @RequestParam(required = false) String to
-// ) {
-//     try {
-//         System.out.println("===== /donation-counts API HIT =====");
-//         System.out.println("FROM param: " + from);
-//         System.out.println("TO param  : " + to);
-
-//         Map<String, Object> counts =
-//                 donationService.getUniversalCounts(from, to);
-
-//         System.out.println("===== /donation-counts API SUCCESS =====");
-
-//         return ResponseEntity.ok(
-//                 Map.of(
-//                         "success", true,
-//                         "counts", counts
-//                 )
-//         );
-
-//     } catch (Exception e) {
-//         System.out.println("❌ ERROR in /donation-counts");
-//         e.printStackTrace();
-
-//         return ResponseEntity.status(500).body(
-//                 Map.of(
-//                         "success", false,
-//                         "message", e.getMessage()
-//                 )
-//         );
-//     }
-// }
-
-//     @GetMapping("/donation-counts")
-// public ResponseEntity<?> getDonationCounts(
-//         @RequestParam(required = false) String from,
-//         @RequestParam(required = false) String to
-// ) {
-//     try {
-//         Map<String, Object> counts = donationService.getUniversalCounts(from, to);
-//         return ResponseEntity.ok(Map.of("success", true, "counts", counts));
-//     } catch (Exception e) {
-//         e.printStackTrace();
-//         return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
-//     }
-// }
 
 
 }
