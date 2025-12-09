@@ -1714,11 +1714,363 @@ private PdfReceiptServic pdfReceiptService;
         return next.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
     }
 
-  
+  // --------------------------------------------------------------------
+// SUBSCRIPTION CREATE  (E-MANDATE)
+// --------------------------------------------------------------------
 
-   
+@PostMapping("/create-subscription")
+public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+    System.out.println("====================== CREATE SUBSCRIPTION START ======================");
+    System.out.println("Received: " + req);
+
+    try {
+        String donorId = String.valueOf(req.get("donorId"));
+        int amount = parseIntSafe(req.get("amount"), 0);
+
+        if (amount <= 0) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "message", "Invalid amount"));
+        }
+
+        int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
+        if (starterAmount < 1 || starterAmount > 28) {
+            starterAmount = 10;
+        }
+
+        Donourentity donor = donationRepo.findById(donorId)
+                .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
+
+        RazorpayClient client = new RazorpayClient(keyId, keySecret);
+
+        // --------- PLAN ---------
+        Map<String, Object> item = Map.of(
+                "name", "Monthly Donation",
+                "amount", amount * 100,   // paise
+                "currency", "INR"
+        );
+
+        Map<String, Object> planRequest = Map.of(
+                "period", "monthly",
+                "interval", 1,
+                "item", item
+        );
+
+        System.out.println("Plan request: " + new JSONObject(planRequest).toString(2));
+        Plan plan = client.plans.create(new JSONObject(planRequest));
+        System.out.println("Created plan: " + plan);
+
+        donor.setPlanId(plan.get("id"));
+        donor.setRazorpayPlanId(plan.get("id"));
+        donor.setMonthlyAmount((double) amount);
+        donationRepo.save(donor);
+
+        // --------- SUBSCRIPTION (E-MANDATE) ---------
+        Map<String, Object> notes = Map.of(
+                "donorId", donorId,
+                "monthlyAmount", String.valueOf(amount)
+        );
+
+        Map<String, Object> subscriptionRequest = new HashMap<>();
+        subscriptionRequest.put("plan_id", plan.get("id"));
+        subscriptionRequest.put("customer_notify", 1);
+        subscriptionRequest.put("total_count", (subscriptionYears * 12) - 1);
+        subscriptionRequest.put("notes", notes);
+
+        // ⚠ For e-mandate, do NOT force a separate ₹1 upfront payment from our side.
+        // Razorpay/bank will handle the auth txn and may show 0/1 rupee.
+        // So we REMOVE the addons block that we had earlier.
+
+        Integer useStartDay = donor.getStartDay() != null ? donor.getStartDay() : starterAmount;
+        if (useStartDay != null) {
+            subscriptionRequest.put("start_at", getNextStartDate(useStartDay));
+        }
+
+        System.out.println("📦 Subscription Payload: " + new JSONObject(subscriptionRequest).toString(2));
+
+        Subscription subscription = client.subscriptions.create(new JSONObject(subscriptionRequest));
+        System.out.println("Created subscription: " + subscription);
+
+        donor.setSubscriptionId(subscription.get("id"));
+        donor.setSubscriptionStatus("CREATED");
+        donor.setStartDay(useStartDay);
+
+        // e-mandate fields – initially pending
+        donor.setMandateStatus("PENDING");
+        donor.setMandateAmount((double) amount);
+        donor.setMandateFrequency("MONTHLY");
+
+        donationRepo.save(donor);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "subscription_id", subscription.get("id"),
+                "plan_id", plan.get("id"),
+                "keyId", keyId
+        ));
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500)
+                .body(Map.of("success", false, "message", e.getMessage()));
+    }
+}
+
+
+ // --------------------------------------------------------------------
+// WEBHOOK HANDLER
+// --------------------------------------------------------------------
+@PostMapping("/razorpay-webhook")
+public ResponseEntity<?> webhook(@RequestBody String payload,
+                                 @RequestHeader("X-Razorpay-Signature") String signature) {
+
+    System.out.println("====================== WEBHOOK RECEIVED ======================");
+    System.out.println("Signature: " + signature);
+
+    try {
+        if (!Utils.verifyWebhookSignature(payload, signature, webhookSecret)) {
+            System.out.println("❌ Invalid webhook signature");
+            return ResponseEntity.status(400).body("Invalid signature");
+        }
+
+        JSONObject json = new JSONObject(payload);
+        String event = json.optString("event");
+        System.out.println("📣 EVENT = " + event);
+
+        // ------------------------------------------------------------------
+        // 1️⃣ ONE-TIME PAYMENT SAFETY (payment.captured)
+        // ------------------------------------------------------------------
+        if ("payment.captured".equals(event)) {
+
+            JSONObject p = json.getJSONObject("payload")
+                    .getJSONObject("payment")
+                    .getJSONObject("entity");
+
+            String orderId = p.optString("order_id", null);
+            String paymentId = p.optString("id", null);
+
+            if (orderId != null) {
+                donationRepo.findByOrderId(orderId).ifPresent(donor -> {
+                    donor.setPaymentId(paymentId);
+                    donor.setStatus("SUCCESS");
+                    donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+                    donationRepo.save(donor);
+                    System.out.println("✅ payment.captured → updated donor");
+                });
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // 2️⃣ MANDATE EVENTS (for e-mandate, if enabled in webhooks)
+        // ------------------------------------------------------------------
+        // Razorpay emits mandate events from the Mandates product. The exact
+        // list depends on what you subscribed to (authorized/paused/revoked/etc).
+        if (event.startsWith("mandate.")) {
+            try {
+                JSONObject m = json.getJSONObject("payload")
+                        .getJSONObject("mandate")
+                        .getJSONObject("entity");
+
+                String subscriptionId = m.optString("subscription_id", null);
+                String mandateId      = m.optString("id", null);
+                String mandateStatus  = m.optString("status", "").toUpperCase();
+
+                System.out.println("🔔 mandate event → sub=" + subscriptionId +
+                                   " mandate=" + mandateId +
+                                   " status=" + mandateStatus);
+
+                if (subscriptionId != null) {
+                    donationRepo.findBySubscriptionId(subscriptionId).ifPresent(donor -> {
+
+                        donor.setRazorpayMandateId(mandateId);
+                        donor.setMandateId(mandateId);            // your generic field
+                        donor.setMandateStatus(mandateStatus);
+                        donor.setStoredFromWebhook(true);
+
+                        // Amount / frequency / dates – set if present
+                        if (m.has("amount")) {
+                            donor.setMandateAmount(m.getDouble("amount") / 100.0);
+                        }
+                        if (m.has("start_at")) {
+                            LocalDateTime start = LocalDateTime.ofEpochSecond(
+                                    m.getLong("start_at"), 0, ZoneId.of("Asia/Kolkata").getRules().getOffset(LocalDateTime.now())
+                            );
+                            donor.setMandateStartDate(start);
+                        }
+                        if (m.has("end_at")) {
+                            long endAt = m.optLong("end_at", 0L);
+                            if (endAt > 0) {
+                                LocalDateTime end = LocalDateTime.ofEpochSecond(
+                                        endAt, 0, ZoneId.of("Asia/Kolkata").getRules().getOffset(LocalDateTime.now())
+                                );
+                                donor.setMandateEndDate(end);
+                            }
+                        }
+
+                        // If mandate is authorized/active → mark subscription/donation success
+                        if ("AUTHORIZED".equals(mandateStatus) ||
+                                "ACTIVE".equals(mandateStatus)) {
+                            donor.setSubscriptionStatus("AUTHENTICATED");
+                            donor.setStatus("SUCCESS");
+                        } else if ("REVOKED".equals(mandateStatus) ||
+                                   "PAUSED".equals(mandateStatus) ||
+                                   "CANCELLED".equals(mandateStatus)) {
+                            donor.setStatus("FAILED");
+                        }
+
+                        donationRepo.save(donor);
+                        System.out.println("✅ mandate.* → updated donor " + donor.getId());
+
+                        // Send confirmation mail ONLY when first time becomes authorized
+                        if ("AUTHORIZED".equals(mandateStatus) &&
+                                Boolean.FALSE.equals(donor.getMandateMailSent())) {
+
+                            try {
+                                Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
+
+                                byte[] pdf = pdfReceiptService.generateMandateConfirmation(decrypted);
+
+                                mailService.sendDonationReceiptWithAttachment(
+                                        decrypted.getEmail(),
+                                        decrypted.getFirstName() + " " + decrypted.getLastName(),
+                                        decrypted.getMonthlyAmount(),
+                                        mandateId,
+                                        pdf,
+                                        "Mandate_Confirmation_" + mandateId + ".pdf"
+                                );
+
+                                donor.setMandateMailSent(true);
+                                donationRepo.save(donor);
+
+                                System.out.println("📧 Mandate confirmation mail sent");
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                System.out.println("⚠ Error in mandate.* handler");
+                e.printStackTrace();
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // 3️⃣ SUBSCRIPTION STATE EVENTS
+        // ------------------------------------------------------------------
+        if (event.startsWith("subscription.")) {
+
+            // subscription.charged also has payment entity; handle below for debits
+            JSONObject sub = json.getJSONObject("payload")
+                    .getJSONObject("subscription")
+                    .getJSONObject("entity");
+
+            updateDonorFromSubscriptionEntity(sub, event);
+        }
+
+        // ------------------------------------------------------------------
+        // 4️⃣ MONTHLY CHARGE (subscription.charged)
+        // ------------------------------------------------------------------
+        if ("subscription.charged".equals(event)) {
+
+            JSONObject p = json.getJSONObject("payload")
+                    .getJSONObject("payment")
+                    .getJSONObject("entity");
+
+            String subscriptionId = p.getString("subscription_id");
+            String paymentId = p.getString("id");
+            double amountPaid = p.getInt("amount") / 100.0;
+
+            donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
+
+                Donourentity monthly = new Donourentity();
+
+                monthly.setFirstName(parent.getFirstName());
+                monthly.setLastName(parent.getLastName());
+                monthly.setEmail(parent.getEmail());
+                monthly.setMobile(parent.getMobile());
+
+                monthly.setSubscriptionId(subscriptionId);
+                monthly.setPaymentId(paymentId);
+                monthly.setAmount(amountPaid);
+                monthly.setStatus("SUCCESS");
+                monthly.setSubscriptionStatus("CHARGED");
+                monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+
+                donationRepo.save(monthly);
+
+                System.out.println("✅ Monthly debit saved (new row)");
+
+                try {
+                    Donourentity decrypted = donationService.findByIdDecrypt(monthly.getId());
+
+                    byte[] pdf = pdfReceiptService.generateMonthlyDebitReceipt(
+                            decrypted, paymentId, amountPaid
+                    );
+
+                    mailService.sendDonationReceiptWithAttachment(
+                            decrypted.getEmail(),
+                            decrypted.getFirstName() + " " + decrypted.getLastName(),
+                            amountPaid,
+                            paymentId,
+                            pdf,
+                            "Monthly_Donation_" + paymentId + ".pdf"
+                    );
+
+                    System.out.println("📧 Monthly receipt sent");
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        return ResponseEntity.ok("OK");
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500).body("error");
+    }
+}
+    // Helper to sync subscription status from webhook into DB
+private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
+    try {
+        String subscriptionId = sub.optString("id", null);
+        String rzpStatus = sub.optString("status", "").toUpperCase();
+
+        System.out.println(event + " → subscriptionId=" + subscriptionId + ", status=" + rzpStatus);
+
+        if (subscriptionId == null) {
+            System.out.println("⚠ subscription entity has no id");
+            return;
+        }
+
+        Donourentity donor = donationRepo.findBySubscriptionId(subscriptionId).orElse(null);
+        if (donor == null) {
+            System.out.println("⚠ No donor found for subscriptionId=" + subscriptionId);
+            return;
+        }
+
+        donor.setSubscriptionStatus(rzpStatus);
+
+        if ("AUTHENTICATED".equals(rzpStatus) || "ACTIVE".equals(rzpStatus)) {
+            donor.setStatus("SUCCESS");
+        } else if ("HALTED".equals(rzpStatus) || "CANCELLED".equals(rzpStatus)
+                || "EXPIRED".equals(rzpStatus) || "COMPLETED".equals(rzpStatus)) {
+            donor.setStatus("FAILED");
+        }
+
+        donationRepo.save(donor);
+        System.out.println("✅ Subscription status updated from webhook for donorId=" + donor.getId());
+    } catch (Exception e) {
+        System.out.println("⚠ Error updating donor from subscription entity");
+        e.printStackTrace();
+    }
+}
+
+  
         
 }
+
 
 
 
