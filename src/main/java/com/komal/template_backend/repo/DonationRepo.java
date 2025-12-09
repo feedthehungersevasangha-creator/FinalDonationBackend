@@ -211,14 +211,12 @@ public interface DonationRepo extends MongoRepository<Donourentity, String> {
             String recordType,    // SUBSCRIPTION_MONTHLY
             String status         // SUCCESS
     );
-
-    double sumAmountByRecordTypeAndStatusAndPaymentIdIsNotNull(
-            String recordType,
-            String status
-    );
-
-
-
+@Query(value = "{ 'recordType': ?0, 'status': ?1, 'paymentId': { $ne: null } }",
+       fields = "{ 'amount': 1 }")
+List<Donourentity> findAmountsForSum(
+        String recordType,
+        String status
+);
     // =================================================
     // DATE RANGE (REPORTS)
     // =================================================
