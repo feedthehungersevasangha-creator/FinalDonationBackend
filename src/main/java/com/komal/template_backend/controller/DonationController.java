@@ -146,7 +146,7 @@ public class DonationController {
     private DonationRepo donationRepo;
         private final DashboardService dashboardService;
 
-    public DonationController(DonationService donationService, DonorsFilteration donorsFilteration) {
+    public DonationController(DonationService donationService, DonorsFilteration donorsFilteration,DashboardService dashboardService) {
         this.donationService = donationService;
         this.donorsFilteration = donorsFilteration;
         this.dashboardService = dashboardService;
