@@ -42,6 +42,13 @@
 //         res.put("oneTimeCount", oneTimeCount);
 //         res.put("mandateCount", mandateCount);
 //         res.put("monthlyDebitCount", monthlyCount);
+
+
+//         res.put("monthlyAmount", monthlyAmount);
+
+//         return res;
+//     }
+// }
 package com.komal.template_backend.service;
 
 import com.komal.template_backend.repo.DonationRepo;
@@ -112,9 +119,3 @@ public class DashboardService {
         return result;
     }
 }
-
-//         res.put("monthlyAmount", monthlyAmount);
-
-//         return res;
-//     }
-// }
