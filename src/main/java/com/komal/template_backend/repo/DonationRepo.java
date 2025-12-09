@@ -121,4 +121,34 @@ List<Donourentity> findSubscriptionsForSync();
     int deleteByStatusAndDonationDateBefore(
             String status, LocalDateTime cutoff
     );
+     // ===============================
+    // ONE-TIME
+    // ===============================
+    long countByRecordTypeAndStatusAndOrderIdIsNotNullAndPaymentIdIsNotNull(
+            String recordType,
+            String status
+    );
+
+    // ===============================
+    // SUBSCRIPTION (MANDATE)
+    // ===============================
+    long countByRecordTypeAndStatusAndSubscriptionStatusInAndMandateStatusIn(
+            String recordType,
+            String status,
+            List<String> subscriptionStatuses,
+            List<String> mandateStatuses
+    );
+
+    // ===============================
+    // MONTHLY DEBITS
+    // ===============================
+    long countByRecordTypeAndStatusAndPaymentIdIsNotNull(
+            String recordType,
+            String status
+    );
+
+    double sumAmountByRecordTypeAndStatusAndPaymentIdIsNotNull(
+            String recordType,
+            String status
+    );
 }
