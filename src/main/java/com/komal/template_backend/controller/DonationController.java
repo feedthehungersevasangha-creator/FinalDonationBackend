@@ -314,40 +314,40 @@ public class DonationController {
 //     }
 // }
 
-@GetMapping("/donation-counts")
-public ResponseEntity<?> getDonationCounts(
-        @RequestParam(required = false) String from,
-        @RequestParam(required = false) String to
-) {
-    try {
-        System.out.println("===== /donation-counts API HIT =====");
-        System.out.println("FROM param: " + from);
-        System.out.println("TO param  : " + to);
+// @GetMapping("/donation-counts")
+// public ResponseEntity<?> getDonationCounts(
+//         @RequestParam(required = false) String from,
+//         @RequestParam(required = false) String to
+// ) {
+//     try {
+//         System.out.println("===== /donation-counts API HIT =====");
+//         System.out.println("FROM param: " + from);
+//         System.out.println("TO param  : " + to);
 
-        Map<String, Object> counts =
-                donationService.getUniversalCounts(from, to);
+//         Map<String, Object> counts =
+//                 donationService.getUniversalCounts(from, to);
 
-        System.out.println("===== /donation-counts API SUCCESS =====");
+//         System.out.println("===== /donation-counts API SUCCESS =====");
 
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "counts", counts
-                )
-        );
+//         return ResponseEntity.ok(
+//                 Map.of(
+//                         "success", true,
+//                         "counts", counts
+//                 )
+//         );
 
-    } catch (Exception e) {
-        System.out.println("❌ ERROR in /donation-counts");
-        e.printStackTrace();
+//     } catch (Exception e) {
+//         System.out.println("❌ ERROR in /donation-counts");
+//         e.printStackTrace();
 
-        return ResponseEntity.status(500).body(
-                Map.of(
-                        "success", false,
-                        "message", e.getMessage()
-                )
-        );
-    }
-}
+//         return ResponseEntity.status(500).body(
+//                 Map.of(
+//                         "success", false,
+//                         "message", e.getMessage()
+//                 )
+//         );
+//     }
+// }
 
 //     @GetMapping("/donation-counts")
 // public ResponseEntity<?> getDonationCounts(
