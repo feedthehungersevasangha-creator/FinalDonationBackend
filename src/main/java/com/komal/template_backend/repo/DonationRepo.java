@@ -50,6 +50,118 @@
 
 // }
 
+// package com.komal.template_backend.repo;
+
+// import com.komal.template_backend.model.Donourentity;
+// import org.springframework.data.mongodb.repository.MongoRepository;
+// import org.springframework.data.mongodb.repository.Query;
+
+// import java.time.LocalDateTime;
+// import java.util.List;
+// import java.util.Optional;
+
+// public interface DonationRepo extends MongoRepository<Donourentity, String> {
+//   // ✅ One-time donations
+//     long countByRecordTypeAndStatus(String recordType, String status);
+
+//     // ✅ Mandates (parent subscription row)
+//     long countByRecordTypeAndMandateStatus(String recordType, String mandateStatus);
+
+//     // ✅ Monthly debits
+//     long countByRecordTypeAndStatusAndSubscriptionIdIsNotNull(
+//             String recordType,
+//             String status
+//     );
+//     // ------------------------------------------------------------------
+//     // BASIC LOOKUPS
+//     // ------------------------------------------------------------------
+//     Optional<Donourentity> findByOrderId(String orderId);
+
+//     Optional<Donourentity> findBySubscriptionId(String subscriptionId);
+
+//     Optional<Donourentity> findTopBySubscriptionIdOrderByDonationDateAsc(String subscriptionId);
+
+//     // ------------------------------------------------------------------
+//     // SUBSCRIPTION SYNC JOB
+//     // ------------------------------------------------------------------
+//     @Query(value = "{ 'subscriptionId': { $ne: null }, " +
+//                    "  'subscriptionStatus': { $in: ['CREATED','AUTHENTICATED','ACTIVE'] } }")
+//     List<Donourentity> findActiveSubscriptions();
+
+//     // ------------------------------------------------------------------
+//     // DATE-BASED QUERIES
+//     // ------------------------------------------------------------------
+//     List<Donourentity> findByDonationDateBetween(LocalDateTime from, LocalDateTime to);
+
+//     List<Donourentity> findByStatusAndDonationDateBetween(
+//             String status, LocalDateTime from, LocalDateTime to
+//     );
+// // ------------------------------------------------------------------
+// // SUBSCRIPTION SYNC JOB (SAFE FOR E-MANDATE)
+// // ------------------------------------------------------------------
+// @Query(value = "{ 'subscriptionId': { $ne: null }, " +
+//                "  'subscriptionStatus': { $nin: ['CANCELLED','COMPLETED','EXPIRED'] } }")
+// List<Donourentity> findSubscriptionsForSync();
+//     // ------------------------------------------------------------------
+//     // COUNTS (Dashboard)
+//     // ------------------------------------------------------------------
+//     long countByStatus(String status);
+
+//     long countByStatusAndSubscriptionIdIsNull(String status);
+
+//     long countByStatusAndSubscriptionIdIsNotNull(String status);
+
+//     long countBySubscriptionStatus(String subscriptionStatus);
+
+//     long countByStatusAndDonationDateBetween(
+//             String status, LocalDateTime from, LocalDateTime to
+//     );
+
+//     long countByStatusAndSubscriptionIdIsNullAndDonationDateBetween(
+//             String status, LocalDateTime from, LocalDateTime to
+//     );
+
+//     long countByStatusAndSubscriptionIdIsNotNullAndDonationDateBetween(
+//             String status, LocalDateTime from, LocalDateTime to
+//     );
+
+//     // ------------------------------------------------------------------
+//     // CLEANUP JOB
+//     // ------------------------------------------------------------------
+//     int deleteByStatusAndDonationDateBefore(
+//             String status, LocalDateTime cutoff
+//     );
+//      // ===============================
+//     // ONE-TIME
+//     // ===============================
+//     long countByRecordTypeAndStatusAndOrderIdIsNotNullAndPaymentIdIsNotNull(
+//             String recordType,
+//             String status
+//     );
+
+//     // ===============================
+//     // SUBSCRIPTION (MANDATE)
+//     // ===============================
+//     long countByRecordTypeAndStatusAndSubscriptionStatusInAndMandateStatusIn(
+//             String recordType,
+//             String status,
+//             List<String> subscriptionStatuses,
+//             List<String> mandateStatuses
+//     );
+
+//     // ===============================
+//     // MONTHLY DEBITS
+//     // ===============================
+//     long countByRecordTypeAndStatusAndPaymentIdIsNotNull(
+//             String recordType,
+//             String status
+//     );
+
+//     double sumAmountByRecordTypeAndStatusAndPaymentIdIsNotNull(
+//             String recordType,
+//             String status
+//     );
+// }
 package com.komal.template_backend.repo;
 
 import com.komal.template_backend.model.Donourentity;
@@ -61,104 +173,70 @@ import java.util.List;
 import java.util.Optional;
 
 public interface DonationRepo extends MongoRepository<Donourentity, String> {
-  // ✅ One-time donations
-    long countByRecordTypeAndStatus(String recordType, String status);
 
-    // ✅ Mandates (parent subscription row)
-    long countByRecordTypeAndMandateStatus(String recordType, String mandateStatus);
-
-    // ✅ Monthly debits
-    long countByRecordTypeAndStatusAndSubscriptionIdIsNotNull(
-            String recordType,
-            String status
-    );
-    // ------------------------------------------------------------------
-    // BASIC LOOKUPS
-    // ------------------------------------------------------------------
+    // =================================================
+    // BASIC LOOKUPS (USED BY WEBHOOKS & PAYMENTS)
+    // =================================================
     Optional<Donourentity> findByOrderId(String orderId);
 
     Optional<Donourentity> findBySubscriptionId(String subscriptionId);
 
     Optional<Donourentity> findTopBySubscriptionIdOrderByDonationDateAsc(String subscriptionId);
 
-    // ------------------------------------------------------------------
-    // SUBSCRIPTION SYNC JOB
-    // ------------------------------------------------------------------
+    // =================================================
+    // SUBSCRIPTION SYNC (SAFE FOR E-MANDATE)
+    // =================================================
     @Query(value = "{ 'subscriptionId': { $ne: null }, " +
-                   "  'subscriptionStatus': { $in: ['CREATED','AUTHENTICATED','ACTIVE'] } }")
-    List<Donourentity> findActiveSubscriptions();
+                   "  'subscriptionStatus': { $nin: ['CANCELLED','COMPLETED','EXPIRED'] } }")
+    List<Donourentity> findSubscriptionsForSync();
 
-    // ------------------------------------------------------------------
-    // DATE-BASED QUERIES
-    // ------------------------------------------------------------------
-    List<Donourentity> findByDonationDateBetween(LocalDateTime from, LocalDateTime to);
+    // =================================================
+    // DASHBOARD COUNTS (FINAL – USE RECORD TYPE)
+    // =================================================
 
-    List<Donourentity> findByStatusAndDonationDateBetween(
-            String status, LocalDateTime from, LocalDateTime to
-    );
-// ------------------------------------------------------------------
-// SUBSCRIPTION SYNC JOB (SAFE FOR E-MANDATE)
-// ------------------------------------------------------------------
-@Query(value = "{ 'subscriptionId': { $ne: null }, " +
-               "  'subscriptionStatus': { $nin: ['CANCELLED','COMPLETED','EXPIRED'] } }")
-List<Donourentity> findSubscriptionsForSync();
-    // ------------------------------------------------------------------
-    // COUNTS (Dashboard)
-    // ------------------------------------------------------------------
-    long countByStatus(String status);
-
-    long countByStatusAndSubscriptionIdIsNull(String status);
-
-    long countByStatusAndSubscriptionIdIsNotNull(String status);
-
-    long countBySubscriptionStatus(String subscriptionStatus);
-
-    long countByStatusAndDonationDateBetween(
-            String status, LocalDateTime from, LocalDateTime to
+    // ✅ One-time donations
+    long countByRecordTypeAndStatus(
+            String recordType,    // ONE_TIME
+            String status         // SUCCESS
     );
 
-    long countByStatusAndSubscriptionIdIsNullAndDonationDateBetween(
-            String status, LocalDateTime from, LocalDateTime to
+    // ✅ Mandate parents
+    long countByRecordTypeAndMandateStatus(
+            String recordType,    // SUBSCRIPTION_PARENT
+            String mandateStatus  // AUTHORIZED / ACTIVE
     );
 
-    long countByStatusAndSubscriptionIdIsNotNullAndDonationDateBetween(
-            String status, LocalDateTime from, LocalDateTime to
-    );
-
-    // ------------------------------------------------------------------
-    // CLEANUP JOB
-    // ------------------------------------------------------------------
-    int deleteByStatusAndDonationDateBefore(
-            String status, LocalDateTime cutoff
-    );
-     // ===============================
-    // ONE-TIME
-    // ===============================
-    long countByRecordTypeAndStatusAndOrderIdIsNotNullAndPaymentIdIsNotNull(
-            String recordType,
-            String status
-    );
-
-    // ===============================
-    // SUBSCRIPTION (MANDATE)
-    // ===============================
-    long countByRecordTypeAndStatusAndSubscriptionStatusInAndMandateStatusIn(
-            String recordType,
-            String status,
-            List<String> subscriptionStatuses,
-            List<String> mandateStatuses
-    );
-
-    // ===============================
-    // MONTHLY DEBITS
-    // ===============================
+    // ✅ Monthly debits
     long countByRecordTypeAndStatusAndPaymentIdIsNotNull(
-            String recordType,
-            String status
+            String recordType,    // SUBSCRIPTION_MONTHLY
+            String status         // SUCCESS
     );
 
     double sumAmountByRecordTypeAndStatusAndPaymentIdIsNotNull(
             String recordType,
             String status
     );
+
+    // =================================================
+    // DATE RANGE (REPORTS)
+    // =================================================
+    List<Donourentity> findByDonationDateBetween(
+            LocalDateTime from,
+            LocalDateTime to
+    );
+
+    List<Donourentity> findByStatusAndDonationDateBetween(
+            String status,
+            LocalDateTime from,
+            LocalDateTime to
+    );
+
+    // =================================================
+    // CLEANUP
+    // =================================================
+    int deleteByStatusAndDonationDateBefore(
+            String status,
+            LocalDateTime cutoff
+    );
 }
+
