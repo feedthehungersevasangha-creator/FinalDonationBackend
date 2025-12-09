@@ -135,6 +135,21 @@
 //         }
 //     }
 // }
+package com.komal.template_backend.service;
+// test
+import com.komal.template_backend.model.Donourentity;
+import com.komal.template_backend.repo.DonationRepo;
+import com.komal.template_backend.service.MailService;
+import com.komal.template_backend.service.PdfReceiptServic;
+import com.komal.template_backend.service.DonationService;
+import com.razorpay.RazorpayClient;
+import com.razorpay.Subscription;
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
 @Service
 public class SubscriptionStatusSyncService {
 
