@@ -216,6 +216,10 @@ public interface DonationRepo extends MongoRepository<Donourentity, String> {
             String recordType,
             String status
     );
+    @Query(value = "{ 'subscriptionId': { $ne: null }, " +
+               "  'subscriptionStatus': { $nin: ['CANCELLED','COMPLETED','EXPIRED'] } }")
+List<Donourentity> findSubscriptionsForSync();
+
 
     // =================================================
     // DATE RANGE (REPORTS)
