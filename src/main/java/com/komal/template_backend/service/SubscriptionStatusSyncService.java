@@ -182,7 +182,9 @@ public class SubscriptionStatusSyncService {
 
         System.out.println("🔁 Subscription watcher started");
 
-        List<Donourentity> donors = donationRepo.findActiveSubscriptions();
+        // List<Donourentity> donors = donationRepo.findActiveSubscriptions();
+        List<Donourentity> donors = donationRepo.findSubscriptionsForSync();
+
         if (donors.isEmpty()) return;
 
         try {
