@@ -67,55 +67,72 @@ public class DashboardService {
     public DashboardService(DonationRepo donationRepo) {
         this.donationRepo = donationRepo;
     }
+public Map<String, Object> getDashboardCounts() {
 
-    // ==========================================================
-    // ✅ OVERALL COUNTS
-    // ==========================================================
-    public Map<String, Object> getOverallCounts() {
+        Map<String, Object> map = new HashMap<>();
 
-        Map<String, Object> result = new HashMap<>();
+        map.put("oneTime",
+                donationRepo.countByRecordTypeAndStatus(
+                        "ONE_TIME", "SUCCESS"));
 
-        // ✅ One-time donations (SUCCESS + orderId)
-        long oneTimeSuccess =
-                donationRepo.countByStatusAndSubscriptionIdIsNull("SUCCESS");
+        map.put("mandates",
+                donationRepo.countByRecordTypeAndMandateStatus(
+                        "SUBSCRIPTION_PARENT", "AUTHORIZED"));
 
-        // ✅ Active subscriptions (AUTHENTICATED / ACTIVE)
-        long activeSubscriptions =
-                donationRepo.countBySubscriptionStatus("AUTHENTICATED")
-                + donationRepo.countBySubscriptionStatus("ACTIVE");
+        map.put("monthlyDebits",
+                donationRepo.countByRecordTypeAndStatus(
+                        "SUBSCRIPTION_MONTHLY", "SUCCESS"));
 
-        // ✅ Monthly debits (CHARGED rows)
-        long monthlyDebits =
-                donationRepo.countBySubscriptionStatus("CHARGED");
-
-        result.put("oneTimeSuccess", oneTimeSuccess);
-        result.put("activeSubscriptions", activeSubscriptions);
-        result.put("monthlyDebits", monthlyDebits);
-
-        return result;
+        return map;
     }
+    // // ==========================================================
+    // // ✅ OVERALL COUNTS
+    // // ==========================================================
+    // public Map<String, Object> getOverallCounts() {
 
-    // ==========================================================
-    // ✅ DATE RANGE COUNTS
-    // ==========================================================
-    public Map<String, Object> getCountsForRange(
-            LocalDateTime from, LocalDateTime to) {
+    //     Map<String, Object> result = new HashMap<>();
 
-        Map<String, Object> result = new HashMap<>();
+    //     // ✅ One-time donations (SUCCESS + orderId)
+    //     long oneTimeSuccess =
+    //             donationRepo.countByStatusAndSubscriptionIdIsNull("SUCCESS");
 
-        long oneTime =
-                donationRepo.countByStatusAndSubscriptionIdIsNullAndDonationDateBetween(
-                        "SUCCESS", from, to
-                );
+    //     // ✅ Active subscriptions (AUTHENTICATED / ACTIVE)
+    //     long activeSubscriptions =
+    //             donationRepo.countBySubscriptionStatus("AUTHENTICATED")
+    //             + donationRepo.countBySubscriptionStatus("ACTIVE");
 
-        long subscriptions =
-                donationRepo.countByStatusAndSubscriptionIdIsNotNullAndDonationDateBetween(
-                        "SUCCESS", from, to
-                );
+    //     // ✅ Monthly debits (CHARGED rows)
+    //     long monthlyDebits =
+    //             donationRepo.countBySubscriptionStatus("CHARGED");
 
-        result.put("oneTimeSuccess", oneTime);
-        result.put("subscriptionSuccess", subscriptions);
+    //     result.put("oneTimeSuccess", oneTimeSuccess);
+    //     result.put("activeSubscriptions", activeSubscriptions);
+    //     result.put("monthlyDebits", monthlyDebits);
 
-        return result;
-    }
+    //     return result;
+    // }
+
+    // // ==========================================================
+    // // ✅ DATE RANGE COUNTS
+    // // ==========================================================
+    // public Map<String, Object> getCountsForRange(
+    //         LocalDateTime from, LocalDateTime to) {
+
+    //     Map<String, Object> result = new HashMap<>();
+
+    //     long oneTime =
+    //             donationRepo.countByStatusAndSubscriptionIdIsNullAndDonationDateBetween(
+    //                     "SUCCESS", from, to
+    //             );
+
+    //     long subscriptions =
+    //             donationRepo.countByStatusAndSubscriptionIdIsNotNullAndDonationDateBetween(
+    //                     "SUCCESS", from, to
+    //             );
+
+    //     result.put("oneTimeSuccess", oneTime);
+    //     result.put("subscriptionSuccess", subscriptions);
+
+    //     return result;
+    // }
 }
