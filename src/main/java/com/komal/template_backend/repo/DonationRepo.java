@@ -86,7 +86,12 @@ public interface DonationRepo extends MongoRepository<Donourentity, String> {
     List<Donourentity> findByStatusAndDonationDateBetween(
             String status, LocalDateTime from, LocalDateTime to
     );
-
+// ------------------------------------------------------------------
+// SUBSCRIPTION SYNC JOB (SAFE FOR E-MANDATE)
+// ------------------------------------------------------------------
+@Query(value = "{ 'subscriptionId': { $ne: null }, " +
+               "  'subscriptionStatus': { $nin: ['CANCELLED','COMPLETED','EXPIRED'] } }")
+List<Donourentity> findSubscriptionsForSync();
     // ------------------------------------------------------------------
     // COUNTS (Dashboard)
     // ------------------------------------------------------------------
