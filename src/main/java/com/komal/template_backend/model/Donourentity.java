@@ -647,7 +647,6 @@ public class Donourentity {
     private String recordType;
 // ONE_TIME | SUBSCRIPTION_PARENT | SUBSCRIPTION_MONTHLY
     private Integer cycleCount;     // 1, 2, 3, ...
-private Boolean mandateMailSent = false;
 private Boolean setupMailSent = false;
 
 // --------------------
