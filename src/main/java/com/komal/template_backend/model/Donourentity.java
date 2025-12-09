@@ -644,6 +644,32 @@ public class Donourentity {
     private String payerContactHash;
     private Integer startDay;
     private Boolean mandateMailSent = false;
+    private String recordType;
+// ONE_TIME | SUBSCRIPTION_PARENT | SUBSCRIPTION_MONTHLY
+    private Integer cycleCount;     // 1, 2, 3, ...
+
+
+// --------------------
+// cycleCount
+// --------------------
+public Integer getCycleCount() {
+    return cycleCount;
+}
+
+public void setCycleCount(Integer cycleCount) {
+    this.cycleCount = cycleCount;
+}
+
+// --------------------
+// recordType
+// --------------------
+public String getRecordType() {
+    return recordType;
+}
+
+public void setRecordType(String recordType) {
+    this.recordType = recordType;
+}
 
     // ✅ REQUIRED GETTERS & SETTERS
     public Boolean getMandateMailSent() {
