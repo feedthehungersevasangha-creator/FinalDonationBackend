@@ -715,9 +715,9 @@ private String displayReceiptType(Donourentity d) {
             cs.newLineAtOffset(0, -16);
             cs.showText("Subscription ID: " + safe(d.getSubscriptionId()));
             cs.newLineAtOffset(0, -16);
-            cs.showText("Mandate ID: " + safe(d.getRazorpayMandateId()));
+            cs.showText("Mandate ID: " + safe(d.getMandateId()));
             cs.newLineAtOffset(0, -16);
-            cs.showText("Mandate Status: " + safe(d.getMandateStatus()));
+            cs.showText("Mandate Status: Approved " );
             cs.newLineAtOffset(0, -16);
             cs.showText("Monthly Amount: INR " + safe(String.valueOf(d.getMonthlyAmount())));
 
