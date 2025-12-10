@@ -1598,6 +1598,7 @@ private PdfReceiptServic pdfReceiptService;
                 donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
 
                 donationService.saveDonation(donor);
+                donorId = donor.getId(); 
 
                 // ----- Receipt + Email -----
                 try {
@@ -1637,6 +1638,7 @@ private PdfReceiptServic pdfReceiptService;
                     "success", true,
                     "status", status,
                     "amount", amount / 100.0
+                    "donorId", donorId   // ✅ THIS WAS MISSING
             ));
         } catch (Exception e) {
             e.printStackTrace();
@@ -2722,6 +2724,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
 
         
 }
+
 
 
 
