@@ -1427,1312 +1427,18 @@
 //     }
 // }
 // ------------------------------------------------------------------------------------------------------
-// package com.komal.template_backend.controller;
-
-// import com.komal.template_backend.model.Donourentity;
-// import com.komal.template_backend.repo.DonationRepo;
-// import com.komal.template_backend.service.DonationService;
-// import com.komal.template_backend.service.MailService;
-// // import com.komal.template_backend.service.pdfReceiptServiceee;
-// import com.komal.template_backend.service.PdfReceiptServic;
-// import com.razorpay.Order;
-// import com.razorpay.Plan;
-// import com.razorpay.RazorpayClient;
-// import com.razorpay.Subscription;
-// import com.razorpay.Utils;
-// import org.json.JSONObject;
-// import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.beans.factory.annotation.Value;
-// import org.springframework.http.ResponseEntity;
-// import org.springframework.web.bind.annotation.*;
-
-// import javax.crypto.Mac;
-// import javax.crypto.spec.SecretKeySpec;
-// import java.time.LocalDateTime;
-// import java.time.ZoneId;
-// import java.util.*;
-
-// @RestController
-// @RequestMapping("/api/payment")
-// public class RazorpayController {
-
-//     @Value("${razorpay.key_id}")
-//     private String keyId;
-
-//     @Value("${razorpay.key_secret}")
-//     private String keySecret;
-
-//     @Value("${razorpay.webhook_secret}")
-//     private String webhookSecret;
-
-//     @Value("${razorpay.subscription_years}")
-//     private int subscriptionYears;
-
-//     @Autowired
-//     private DonationService donationService;
-
-//     // @Autowired
-//     // private pdfReceiptServiceee pdfReceiptServicee;
-//     @Autowired
-// private PdfReceiptServic pdfReceiptService;
-// ;
-
-
-//     @Autowired
-//     private MailService mailService;
-
-//     @Autowired
-//     private DonationRepo donationRepo;
-
-//     // --------------------------------------------------------------------
-//     // ONE-TIME ORDER CREATION
-//     // --------------------------------------------------------------------
-
-//     @PostMapping("/create-order")
-//     public ResponseEntity<?> createOrder(@RequestBody Donourentity donor) {
-//         System.out.println("========= CREATE ONE-TIME ORDER =========");
-//         try {
-//             RazorpayClient client = new RazorpayClient(keyId, keySecret);
-
-//             JSONObject options = new JSONObject();
-//             options.put("amount", donor.getAmount() * 100);
-//             options.put("currency", "INR");
-//             options.put("receipt", "receipt_" + System.currentTimeMillis());
-//             options.put("payment_capture", 1);
-
-//             System.out.println("Order options: " + options);
-//             Order order = client.orders.create(options);
-//             System.out.println("Created order: " + order);
-
-//             donor.setOrderId(order.get("id"));
-//             donor.setStatus("PENDING");
-//             donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-
-//             Donourentity saved = donationService.saveDonation(donor);
-
-//             return ResponseEntity.ok(Map.of(
-//                     "success", true,
-//                     "id", order.get("id"),
-//                     "donorId", saved.getId(),
-//                     "amount", donor.getAmount() * 100,
-//                     "currency", "INR",
-//                     "keyId", keyId
-//             ));
-//         } catch (Exception e) {
-//             e.printStackTrace();
-//             return ResponseEntity.status(500)
-//                     .body(Map.of("success", false, "message", e.getMessage()));
-//         }
-//     }
-
-//     // --------------------------------------------------------------------
-//     // ONE-TIME PAYMENT VERIFY
-//     // --------------------------------------------------------------------
-
-//     @PostMapping("/verify")
-//     public ResponseEntity<?> verifyPayment(@RequestBody Map<String, Object> body) {
-//         System.out.println("========= VERIFY ONE-TIME PAYMENT =========");
-//         System.out.println("RAW BODY: " + body);
-
-//         try {
-//             String razorpayOrderId = (String) body.get("razorpay_order_id");
-//             String razorpayPaymentId = (String) body.get("razorpay_payment_id");
-//             String razorpaySignature = (String) body.get("razorpay_signature");
-
-//             System.out.println("➡ order_id   = " + razorpayOrderId);
-//             System.out.println("➡ payment_id = " + razorpayPaymentId);
-//             System.out.println("➡ signature  = " + razorpaySignature);
-
-//             if (razorpayOrderId == null || razorpayPaymentId == null || razorpaySignature == null) {
-//                 return ResponseEntity.badRequest().body(Map.of(
-//                         "success", false,
-//                         "message", "Missing required fields"
-//                 ));
-//             }
-
-//             String payload = razorpayOrderId + "|" + razorpayPaymentId;
-//             String generatedSignature = hmacSha256(payload, keySecret);
-
-//             System.out.println("VERIFY SIGNATURE");
-//             System.out.println("  payload           = " + payload);
-//             System.out.println("  expectedSignature = " + generatedSignature);
-//             System.out.println("  receivedSignature = " + razorpaySignature);
-
-//             if (!generatedSignature.equals(razorpaySignature)) {
-//                 System.out.println("❌ INVALID SIGNATURE (ONE-TIME)");
-//                 return ResponseEntity.badRequest().body(Map.of(
-//                         "success", false,
-//                         "message", "Invalid signature"
-//                 ));
-//             }
-
-//             RazorpayClient client = new RazorpayClient(keyId, keySecret);
-//             com.razorpay.Payment payment = client.payments.fetch(razorpayPaymentId);
-//             JSONObject paymentJson = payment.toJson();
-//             System.out.println("Payment JSON: " + paymentJson);
-
-//             String status = paymentJson.optString("status", "UNKNOWN");
-//             int amount = paymentJson.optInt("amount", 0);
-//             String payerEmail = paymentJson.optString("email", "");
-//             String payerContact = paymentJson.optString("contact", "");
-//             String method = paymentJson.optString("method", "");
-//             String bank = paymentJson.optString("bank", "");
-//             String vpa = paymentJson.optString("vpa", "");
-//             String wallet = paymentJson.optString("wallet", "");
-
-//             Optional<Donourentity> donorOpt = donationRepo.findByOrderId(razorpayOrderId);
-//             if (donorOpt.isPresent()) {
-//                 Donourentity donor = donorOpt.get();
-
-//                 donor.setPaymentId(razorpayPaymentId);
-//                 donor.setSignature(razorpaySignature);
-//                 donor.setStatus(status.equalsIgnoreCase("captured") ? "SUCCESS" : status.toUpperCase());
-//                 donor.setPaymentMethod(method);
-//                 donor.setRecordType("ONE_TIME");
-//                 donor.setUpiId(vpa);
-//                 donor.setWallet(wallet);
-//                 donor.setPaymentInfo(bank.isEmpty() ? vpa : bank);
-//                 donor.setPayerEmail(payerEmail);
-//                 donor.setPayerContact(payerContact);
-//                 donor.setAmount(amount / 100.0);
-//                 donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-
-//                 donationService.saveDonation(donor);
-//                 donorId = donor.getId(); 
-
-//                 // ----- Receipt + Email -----
-//                 try {
-//                     Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
-//                     if (decrypted != null) {
-//                         byte[] pdf = pdfReceiptService.generateOneTimeDonationReceipt(
-//                                 decrypted,
-//                                 decrypted.getPaymentId(),
-//                                 decrypted.getAmount()
-//                         );
-
-//                         String recipient = (decrypted.getPayerEmail() != null &&
-//                                 !decrypted.getPayerEmail().isBlank())
-//                                 ? decrypted.getPayerEmail()
-//                                 : decrypted.getEmail();
-
-//                         if (recipient != null && !recipient.isBlank()) {
-//                             mailService.sendDonationReceiptWithAttachment(
-//                                     recipient,
-//                                     decrypted.getFirstName() + " " + decrypted.getLastName(),
-//                                     decrypted.getAmount(),
-//                                     decrypted.getPaymentId(),
-//                                     pdf,
-//                                     "DonationReceipt_" + decrypted.getPaymentId() + ".pdf"
-//                             );
-//                         }
-//                     }
-//                 } catch (Exception e) {
-//                     System.out.println("⚠ Error while sending one-time receipt");
-//                     e.printStackTrace();
-//                 }
-//             } else {
-//                 System.out.println("⚠ No donor found for orderId=" + razorpayOrderId);
-//             }
-
-//             return ResponseEntity.ok(Map.of(
-//                     "success", true,
-//                     "status", status,
-//                     "amount", amount / 100.0,
-//                     "donorId", donorId  , // ✅ THIS WAS MISSING
-//             ));
-//         } catch (Exception e) {
-//             e.printStackTrace();
-//             return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
-//         }
-//     }
-
-//     // --------------------------------------------------------------------
-//     // HMAC UTILITY
-//     // --------------------------------------------------------------------
-
-//     private String hmacSha256(String data, String secret) throws Exception {
-//         Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
-//         SecretKeySpec key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
-//         sha256_HMAC.init(key);
-//         byte[] hash = sha256_HMAC.doFinal(data.getBytes());
-
-//         StringBuilder sb = new StringBuilder();
-//         for (byte b : hash) {
-//             String hex = Integer.toHexString(0xff & b);
-//             if (hex.length() == 1) sb.append('0');
-//             sb.append(hex);
-//         }
-//         return sb.toString();
-//     }
-//     private boolean verifyWebhook(String payload, String headerSignature) {
-//         try {
-//             String expected = hmacSha256(payload, webhookSecret);
-//             return expected.equals(headerSignature);
-//         } catch (Exception e) {
-//             return false;
-//         }
-//     }
-//     // --------------------------------------------------------------------
-//     // CREATE DONOR (SUBSCRIPTION)
-//     // --------------------------------------------------------------------
-
-//     @PostMapping("/create-donor-record")
-//     public ResponseEntity<?> createDonor(@RequestBody Donourentity donor) {
-//         System.out.println("========= CREATE SUBSCRIPTION DONOR RECORD =========");
-//         try {
-//             donor.setStatus("PENDING");
-//             donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-//             Donourentity saved = donationService.saveDonation(donor);
-//             return ResponseEntity.ok(Map.of("success", true, "donorId", saved.getId()));
-//         } catch (Exception e) {
-//             e.printStackTrace();
-//             return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
-//         }
-//     }
-
-//     private int parseIntSafe(Object o, int fallback) {
-//         try {
-//             if (o == null) return fallback;
-//             if (o instanceof Number) return ((Number) o).intValue();
-//             String s = String.valueOf(o).trim();
-//             return s.isEmpty() ? fallback : Integer.parseInt(s);
-//         } catch (Exception ex) {
-//             return fallback;
-//         }
-//     }
-
-//     // private long getNextStartDate(int startDay) {
-//     //     LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
-//     //     LocalDateTime next;
-
-//     //     int today = now.getDayOfMonth();
-//     //     if (today < startDay) {
-//     //         next = now.withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
-//     //     } else {
-//     //         next = now.plusMonths(1).withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
-//     //     }
-
-//     //     return next.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
-//     // }
-// private long getNextStartDate(int startDay) {
-
-//     LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
-
-//     // ✅ ALWAYS move to NEXT month
-//     LocalDateTime nextMonth =
-//             now.plusMonths(1)
-//                .withDayOfMonth(Math.min(startDay,
-//                        now.plusMonths(1).toLocalDate().lengthOfMonth()))
-//                .withHour(0)
-//                .withMinute(0)
-//                .withSecond(0)
-//                .withNano(0);
-
-//     return nextMonth.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
-// }
-
-//   // --------------------------------------------------------------------
-// // SUBSCRIPTION CREATE  (E-MANDATE)
-// // --------------------------------------------------------------------
-
-// @PostMapping("/create-subscription")
-// public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
-//     System.out.println("====================== CREATE SUBSCRIPTION START ======================");
-//     System.out.println("Received: " + req);
-
-//     try {
-//         String donorId = String.valueOf(req.get("donorId"));
-//         int amount = parseIntSafe(req.get("amount"), 0);
-
-//         if (amount <= 0) {
-//             return ResponseEntity.badRequest().body(
-//                     Map.of("success", false, "message", "Invalid amount"));
-//         }
-
-//         int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
-//         if (starterAmount < 1 || starterAmount > 28) {
-//             starterAmount = 10;
-//         }
-
-//         Donourentity donor = donationRepo.findById(donorId)
-//                 .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
-
-//         RazorpayClient client = new RazorpayClient(keyId, keySecret);
-
-//         // --------- PLAN ---------
-//         Map<String, Object> item = Map.of(
-//                 "name", "Monthly Donation",
-//                 "amount", amount * 100,   // paise
-//                 "currency", "INR"
-//         );
-
-//         Map<String, Object> planRequest = Map.of(
-//                 "period", "monthly",
-//                 "interval", 1,
-//                 "item", item
-//         );
-
-//         System.out.println("Plan request: " + new JSONObject(planRequest).toString(2));
-//         Plan plan = client.plans.create(new JSONObject(planRequest));
-//         System.out.println("Created plan: " + plan);
-
-//         donor.setPlanId(plan.get("id"));
-//         donor.setRazorpayPlanId(plan.get("id"));
-//         donor.setMonthlyAmount((double) amount);
-//         donationRepo.save(donor);
-
-//         // --------- SUBSCRIPTION (E-MANDATE) ---------
-//         Map<String, Object> notes = Map.of(
-//                 "donorId", donorId,
-//                 "monthlyAmount", String.valueOf(amount)
-//         );
-
-//         Map<String, Object> subscriptionRequest = new HashMap<>();
-//         subscriptionRequest.put("plan_id", plan.get("id"));
-//         subscriptionRequest.put("customer_notify", 1);
-//         subscriptionRequest.put("total_count", (subscriptionYears * 12) - 1);
-//         subscriptionRequest.put("notes", notes);
-
-//         // ⚠ For e-mandate, do NOT force a separate ₹1 upfront payment from our side.
-//         // Razorpay/bank will handle the auth txn and may show 0/1 rupee.
-//         // So we REMOVE the addons block that we had earlier.
-
-//         Integer useStartDay = donor.getStartDay() != null ? donor.getStartDay() : starterAmount;
-//         if (useStartDay != null) {
-//             subscriptionRequest.put("start_at", getNextStartDate(useStartDay));
-//         }
-
-//         System.out.println("📦 Subscription Payload: " + new JSONObject(subscriptionRequest).toString(2));
-
-//         Subscription subscription = client.subscriptions.create(new JSONObject(subscriptionRequest));
-//         System.out.println("Created subscription: " + subscription);
-
-//         donor.setSubscriptionId(subscription.get("id"));
-//         donor.setSubscriptionStatus("CREATED");
-//         donor.setStartDay(useStartDay);
-
-//         // e-mandate fields – initially pending
-//         donor.setMandateStatus("PENDING");
-//         donor.setMandateAmount((double) amount);
-//         donor.setMandateFrequency("MONTHLY");
-
-//         donationRepo.save(donor);
-
-//         return ResponseEntity.ok(Map.of(
-//                 "success", true,
-//                 "subscription_id", subscription.get("id"),
-//                 "plan_id", plan.get("id"),
-//                 "keyId", keyId
-//         ));
-
-//     } catch (Exception e) {
-//         e.printStackTrace();
-//         return ResponseEntity.status(500)
-//                 .body(Map.of("success", false, "message", e.getMessage()));
-//     }
-// }
-// @PostMapping("/razorpay-webhook")
-// public ResponseEntity<?> webhook(
-//         @RequestBody String payload,
-//         @RequestHeader("X-Razorpay-Signature") String signature) {
-
-//     System.out.println("====================== WEBHOOK RECEIVED ======================");
-
-//     try {
-//         // ✅ Signature verification
-//         if (!Utils.verifyWebhookSignature(payload, signature, webhookSecret)) {
-//             return ResponseEntity.status(400).body("Invalid signature");
-//         }
-
-//         JSONObject json = new JSONObject(payload);
-//         String event = json.optString("event");
-
-//         JSONObject payloadObj = json.optJSONObject("payload");
-//         if (payloadObj == null) return ResponseEntity.ok("IGNORED");
-
-//         JSONObject paymentEntity = payloadObj
-//                 .optJSONObject("payment")
-//                 .optJSONObject("entity");
-
-//         JSONObject subEntity = payloadObj
-//                 .optJSONObject("subscription")
-//                 .optJSONObject("entity");
-
-//         JSONObject mandateEntity = payloadObj
-//                 .optJSONObject("mandate")
-//                 .optJSONObject("entity");
-
-//         // ============================================================
-//         // 1️⃣ ONE-TIME PAYMENT SAFETY
-//         // ============================================================
-//         if ("payment.captured".equals(event) && paymentEntity != null) {
-
-//             String orderId = paymentEntity.optString("order_id");
-//             String paymentId = paymentEntity.optString("id");
-
-//             donationRepo.findByOrderId(orderId).ifPresent(donor -> {
-//                 donor.setPaymentId(paymentId);
-//                 donor.setStatus("SUCCESS");
-//                 donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-//                 donationRepo.save(donor);
-//             });
-//         }
-
-//         // ============================================================
-//         // 2️⃣ SUBSCRIPTION AUTHENTICATION (MANDATE APPROVED)
-//         // ============================================================
-//         if (("subscription.authenticated".equals(event)
-//                 || "subscription.activated".equals(event))
-//                 && subEntity != null) {
-
-//             String subscriptionId = subEntity.optString("id");
-
-//             donationRepo.findBySubscriptionId(subscriptionId).ifPresent(donor -> {
-
-//                 donor.setSubscriptionStatus("AUTHENTICATED");
-//                 donor.setMandateStatus("AUTHORIZED");
-//                 donor.setRecordType("SUBSCRIPTION_PARENT");
-//                 donor.setStatus("SUCCESS");
-
-//                 if (mandateEntity != null) {
-//                     donor.setMandateId(mandateEntity.optString("id"));
-//                     donor.setRazorpayMandateId(mandateEntity.optString("id"));
-//                 }
-
-//                 donationRepo.save(donor);
-
-//                 // ✅ send mail ONCE
-//                 if (Boolean.FALSE.equals(donor.getMandateMailSent())) {
-//                     try {
-//                         Donourentity decrypted =
-//                                 donationService.findByIdDecrypt(donor.getId());
-
-//                         byte[] pdf =
-//                                 pdfReceiptService.generateMandateConfirmation(decrypted);
-
-//                         mailService.sendDonationReceiptWithAttachment(
-//                                 decrypted.getEmail(),
-//                                 decrypted.getFirstName() + " " + decrypted.getLastName(),
-//                                 decrypted.getMonthlyAmount(),
-//                                 subscriptionId,
-//                                 pdf,
-//                                 "Mandate_Confirmation_" + subscriptionId + ".pdf"
-//                         );
-
-//                         donor.setMandateMailSent(true);
-//                         donationRepo.save(donor);
-
-//                     } catch (Exception e) {
-//                         e.printStackTrace();
-//                     }
-//                 }
-//             });
-//         }
-
-//         // ============================================================
-//         // 3️⃣ MONTHLY DEBIT (subscription.charged)
-//         // ============================================================
-//         if ("subscription.charged".equals(event)
-//                 && paymentEntity != null
-//                 && subEntity != null) {
-
-//             final String subscriptionId =
-//                     paymentEntity.getString("subscription_id");
-
-//             final String paymentId =
-//                     paymentEntity.getString("id");
-
-//             final double amountPaid =
-//                     paymentEntity.getInt("amount") / 100.0;
-
-//             final int cycleCount =
-//                     subEntity.optInt("paid_count", 0);
-
-//             donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
-
-//                 Donourentity monthly = new Donourentity();
-
-//                 monthly.setFirstName(parent.getFirstName());
-//                 monthly.setLastName(parent.getLastName());
-//                 monthly.setEmail(parent.getEmail());
-//                 monthly.setMobile(parent.getMobile());
-
-//                 monthly.setSubscriptionId(subscriptionId);
-//                 monthly.setPaymentId(paymentId);
-//                 monthly.setAmount(amountPaid);
-//                 monthly.setStatus("SUCCESS");
-//                 monthly.setSubscriptionStatus("CHARGED");
-//                 monthly.setFrequency("MONTHLY");
-//                 monthly.setRecordType("SUBSCRIPTION_MONTHLY");
-//                 monthly.setCycleCount(cycleCount);
-//                 // monthly.setCycleCount(paidCount);   // ✅ REQUIRED
-               
-
-//                 monthly.setDonationDate(
-//                         LocalDateTime.now(ZoneId.of("Asia/Kolkata"))
-//                 );
-
-//                 donationRepo.save(monthly);
-
-//                 // ✅ Monthly receipt
-//                 try {
-//                     Donourentity decryptedParent =
-//                             donationService.findByIdDecrypt(parent.getId());
-
-//                     byte[] pdf =
-//                             pdfReceiptService.generateMonthlyDebitReceipt(
-//                                     decryptedParent,
-//                                     paymentId,
-//                                     amountPaid
-//                             );
-
-//                     mailService.sendDonationReceiptWithAttachment(
-//                             decryptedParent.getEmail(),
-//                             decryptedParent.getFirstName() + " " + decryptedParent.getLastName(),
-//                             amountPaid,
-//                             paymentId,
-//                             pdf,
-//                             "Monthly_Donation_" + cycleCount + "_" + paymentId + ".pdf"
-//                     );
-
-//                 } catch (Exception e) {
-//                     e.printStackTrace();
-//                 }
-//             });
-//         }
-
-//         return ResponseEntity.ok("OK");
-
-//     } catch (Exception e) {
-//         e.printStackTrace();
-//         return ResponseEntity.status(500).body("ERROR");
-//     }
-// }
-
-
-// // --------------------------------------------------------------------
-// // WEBHOOK HANDLER -latest
-// // --------------------------------------------------------------------
-// // @PostMapping("/razorpay-webhook")
-// // public ResponseEntity<?> webhook(
-// //         @RequestBody String payload,
-// //         @RequestHeader("X-Razorpay-Signature") String signature) {
-
-// //     System.out.println("====================== WEBHOOK RECEIVED ======================");
-// //     System.out.println("Signature: " + signature);
-// //     System.out.println("Payload: " + payload);
-
-// //     try {
-// //         if (!Utils.verifyWebhookSignature(payload, signature, webhookSecret)) {
-// //             System.out.println("❌ Invalid webhook signature");
-// //             return ResponseEntity.status(400).body("Invalid signature");
-// //         }
-
-// //         JSONObject json = new JSONObject(payload);
-// //         String event = json.optString("event");
-// //         System.out.println("📣 EVENT = " + event);
-
-// //         // Safe extraction of payload objects
-// //         JSONObject payloadObj = json.optJSONObject("payload");
-
-// //         JSONObject payment = null;
-// //         JSONObject subscription = null;
-// //         JSONObject mandate = null;
-
-// //         if (payloadObj != null) {
-// //             JSONObject pWrap = payloadObj.optJSONObject("payment");
-// //             if (pWrap != null) payment = pWrap.optJSONObject("entity");
-
-// //             JSONObject sWrap = payloadObj.optJSONObject("subscription");
-// //             if (sWrap != null) subscription = sWrap.optJSONObject("entity");
-
-// //             JSONObject mWrap = payloadObj.optJSONObject("mandate");
-// //             if (mWrap != null) mandate = mWrap.optJSONObject("entity");
-// //         }
-
-// //         // ------------------------------------------------------------------
-// //         // 1️⃣ ONE-TIME PAYMENT SAFETY (payment.captured)
-// //         // ------------------------------------------------------------------
-// //         if ("payment.captured".equals(event) && payment != null) {
-
-// //             String orderId   = payment.optString("order_id", null);
-// //             String paymentId = payment.optString("id", null);
-
-// //             if (orderId != null) {
-// //                 donationRepo.findByOrderId(orderId).ifPresent(donor -> {
-// //                     donor.setPaymentId(paymentId);
-// //                     donor.setStatus("SUCCESS");
-// //                     donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-// //                     donationRepo.save(donor);
-// //                     System.out.println("✅ payment.captured → updated donor");
-// //                 });
-// //             }
-// //         }
-
-// //         // ------------------------------------------------------------------
-// //         // 2️⃣ SUBSCRIPTION AUTHENTICATED  → BANK MANDATE APPROVED
-// //         // ------------------------------------------------------------------
-// //         if ("subscription.authenticated".equals(event)
-// //                 || "subscription.activated".equals(event)) {
-
-// //             if (subscription == null) {
-// //                 System.out.println("⚠ subscription entity missing in payload");
-// //             } else {
-// //                 String subscriptionId = subscription.optString("id", null);
-// //                 System.out.println("✅ subscription.authenticated for subId=" + subscriptionId);
-
-// //                 if (subscriptionId != null) {
-// //                     donationRepo.findBySubscriptionId(subscriptionId).ifPresent(donor -> {
-
-// //                         // --- Update statuses ---
-// //                         donor.setSubscriptionStatus("AUTHENTICATED");
-// //                         donor.setRecordType("SUBSCRIPTION_PARENT");
-// //                         donor.setStatus("SUCCESS");
-
-// //                         // Treat this as mandate authorized
-// //                         donor.setMandateStatus("AUTHORIZED");
-
-// //                         // Save payer details from payment if present
-// //                         if (payment != null) {
-// //                             donor.setPaymentId(payment.optString("id"));
-// //                             donor.setPayerEmail(
-// //                                     payment.optString("email", donor.getEmail()));
-// //                             donor.setPayerContact(payment.optString("contact"));
-// //                             donor.setPaymentMethod(payment.optString("method"));
-// //                         }
-
-// //                         // Save mandate id/amount if mandate object present
-// //                         if (mandate != null) {
-// //                             donor.setRazorpayMandateId(mandate.optString("id"));
-// //                             donor.setMandateId(mandate.optString("id"));
-// //                             donor.setMandateAmount(mandate.optDouble("amount", donor.getMandateAmount() != null ?
-// //                                     donor.getMandateAmount() * 100 : 0.0) / 100.0);
-// //                             donor.setMandateStatus(mandate.optString("status", "AUTHORIZED"));
-// //                         }
-
-// //                         donationRepo.save(donor);
-
-// //                         // --- Send confirmation mail ONCE after bank approval ---
-// //                         if (Boolean.FALSE.equals(donor.getMandateMailSent())) {
-// //                             try {
-// //                                 Donourentity decrypted =
-// //                                         donationService.findByIdDecrypt(donor.getId());
-
-// //                                 byte[] pdf =
-// //                                         pdfReceiptService.generateMandateConfirmation(decrypted);
-
-// //                                 mailService.sendDonationReceiptWithAttachment(
-// //                                         decrypted.getEmail(),
-// //                                         decrypted.getFirstName() + " " + decrypted.getLastName(),
-// //                                         decrypted.getMonthlyAmount(),
-// //                                         subscriptionId,
-// //                                         pdf,
-// //                                         "Mandate_Confirmation_" + subscriptionId + ".pdf"
-// //                                 );
-
-// //                                 donor.setMandateMailSent(true);
-// //                                 donationRepo.save(donor);
-
-// //                                 System.out.println("📧 Mandate confirmation mail sent");
-
-// //                             } catch (Exception e) {
-// //                                 System.out.println("❌ Error sending mandate confirmation mail");
-// //                                 e.printStackTrace();
-// //                             }
-// //                         }
-// //                     });
-// //                 }
-// //             }
-// //         }
-
-// //         // ------------------------------------------------------------------
-// //         // 3️⃣ MONTHLY DEBIT (subscription.charged) → MONTHLY RECEIPT
-// //         // ------------------------------------------------------------------
-// //         // if ("subscription.charged".equals(event) && payment != null) {
-
-// //         //     String subscriptionId = payment.optString("subscription_id", null);
-// //         //     String paymentId      = payment.optString("id", null);
-// //         //     double amountPaid     = payment.optInt("amount", 0) / 100.0;
-
-// //         //     System.out.println("💳 subscription.charged for sub=" + subscriptionId +
-// //         //                        " payment=" + paymentId + " amount=" + amountPaid);
-
-// //         //     if (subscriptionId != null) {
-// //         //         donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
-
-// //         //             // 👉 Save monthly transaction row (child record)
-// //         //             Donourentity monthly = new Donourentity();
-// //         //             monthly.setFirstName(parent.getFirstName());
-// //         //             monthly.setLastName(parent.getLastName());
-// //         //             monthly.setEmail(parent.getEmail());
-// //         //             monthly.setMobile(parent.getMobile());
-// //         //             monthly.setSubscriptionId(subscriptionId);
-// //         //             monthly.setPaymentId(paymentId);
-// //         //             monthly.setAmount(amountPaid);
-// //         //             monthly.setStatus("SUCCESS");
-// //         //             monthly.setSubscriptionStatus("CHARGED");
-// //         //             monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-
-// //         //             donationRepo.save(monthly);
-// //         //             System.out.println("✅ Monthly debit saved (new row)");
-
-// //         //             // 👉 Send monthly receipt using PARENT donor details
-// //         //             try {
-// //         //                 Donourentity decryptedParent =
-// //         //                         donationService.findByIdDecrypt(parent.getId());
-
-// //         //                 byte[] pdf =
-// //         //                         pdfReceiptService.generateMonthlyDebitReceipt(
-// //         //                                 decryptedParent, paymentId, amountPaid
-// //         //                         );
-
-// //         //                 mailService.sendDonationReceiptWithAttachment(
-// //         //                         decryptedParent.getEmail(),
-// //         //                         decryptedParent.getFirstName() + " " + decryptedParent.getLastName(),
-// //         //                         amountPaid,
-// //         //                         paymentId,
-// //         //                         pdf,
-// //         //                         "Monthly_Donation_" + paymentId + ".pdf"
-// //         //                 );
-
-// //         //                 System.out.println("📧 Monthly receipt sent");
-
-// //         //             } catch (Exception e) {
-// //         //                 System.out.println("❌ Error sending monthly debit receipt");
-// //         //                 e.printStackTrace();
-// //         //             }
-// //         //         });
-// //         //     }
-// //         // }
-// //         // -----------------------------------------------------------------------------------------
-// // //         if ("subscription.charged".equals(event)) {
-
-// // //     JSONObject payment = json.getJSONObject("payload")
-// // //             .getJSONObject("payment")
-// // //             .getJSONObject("entity");
-
-// // //     JSONObject sub = json.getJSONObject("payload")
-// // //             .getJSONObject("subscription")
-// // //             .getJSONObject("entity");
-
-// // //     String subscriptionId = payment.getString("subscription_id");
-// // //     String paymentId = payment.getString("id");
-// // //     double amountPaid = payment.getInt("amount") / 100.0;
-
-// // //     int paidCount = sub.optInt("paid_count", 0); // ✅ cycle number
-
-// // //     donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
-
-// // //         // ✅ CREATE MONTHLY CHILD RECORD
-// // //         Donourentity monthly = new Donourentity();
-
-// // //         // -----------------------------
-// // //         // INHERIT FROM PARENT
-// // //         // -----------------------------
-// // //         monthly.setFirstName(parent.getFirstName());
-// // //         monthly.setLastName(parent.getLastName());
-// // //         monthly.setEmail(parent.getEmail());
-// // //         monthly.setMobile(parent.getMobile());
-
-// // //         monthly.setSubscriptionId(subscriptionId);
-// // //         monthly.setFrequency("MONTHLY");
-// // //         monthly.setPaymentMode("SUBSCRIPTION");
-// // //         monthly.setReceiptType("SUBSCRIPTION_MONTHLY");
-
-// // //         // -----------------------------
-// // //         // DEBIT-SPECIFIC DATA
-// // //         // -----------------------------
-// // //         monthly.setPaymentId(paymentId);
-// // //         monthly.setAmount(amountPaid);
-// // //         monthly.setStatus("SUCCESS");
-// // //         monthly.setSubscriptionStatus("CHARGED");
-// // //         monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-// // //         monthly.setCycleCount(paidCount);
-// // //         monthly.setRecordType("SUBSCRIPTION_MONTHLY");
-
-// // //         // optional
-// // //         monthly.setPaymentMethod(payment.optString("method"));
-// // //         monthly.setPaymentInfo(
-// // //                 payment.optString("bank",
-// // //                 payment.optString("wallet",
-// // //                 payment.optString("vpa", "")))
-// // //         );
-
-// // //         donationRepo.save(monthly);
-
-// // //         System.out.println(
-// // //                 "✅ Monthly debit saved | sub=" + subscriptionId +
-// // //                 " cycle=" + paidCount
-// // //         );
-
-// // //         // -----------------------------
-// // //         // ✅ SEND MONTHLY RECEIPT
-// // //         // -----------------------------
-// // //         try {
-// // //             Donourentity decryptedParent =
-// // //                     donationService.findByIdDecrypt(parent.getId());
-
-// // //             byte[] pdf =
-// // //                     pdfReceiptService.generateMonthlyDebitReceipt(
-// // //                             decryptedParent,
-// // //                             paymentId,
-// // //                             amountPaid,
-// // //                             paidCount // ✅ pass cycle count
-// // //                     );
-
-// // //             mailService.sendDonationReceiptWithAttachment(
-// // //                     decryptedParent.getEmail(),
-// // //                     decryptedParent.getFirstName() + " " + decryptedParent.getLastName(),
-// // //                     amountPaid,
-// // //                     paymentId,
-// // //                     pdf,
-// // //                     "Monthly_Donation_" + paidCount + "_" + paymentId + ".pdf"
-// // //             );
-
-// // //             System.out.println("📧 Monthly receipt sent (cycle " + paidCount + ")");
-
-// // //         } catch (Exception e) {
-// // //             e.printStackTrace();
-// // //         }
-// // //     });
-// // // }
-// //         // -----------------------------------------------------------------------------------
-// // // if ("subscription.charged".equals(event)) {
-
-// // //     JSONObject paymentEntity = json.getJSONObject("payload")
-// // //             .getJSONObject("payment")
-// // //             .getJSONObject("entity");
-
-// // //     JSONObject sub = json.getJSONObject("payload")
-// // //             .getJSONObject("subscription")
-// // //             .getJSONObject("entity");
-
-// // //     String subscriptionId = paymentEntity.getString("subscription_id");
-// // //     String paymentId = paymentEntity.getString("id");
-// // //     double amountPaid = paymentEntity.getInt("amount") / 100.0;
-
-// // //     int paidCount = sub.optInt("paid_count", 0);
-
-// // //     donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
-
-// // //         Donourentity monthly = new Donourentity();
-
-// // //         monthly.setFirstName(parent.getFirstName());
-// // //         monthly.setLastName(parent.getLastName());
-// // //         monthly.setEmail(parent.getEmail());
-// // //         monthly.setMobile(parent.getMobile());
-
-// // //         monthly.setSubscriptionId(subscriptionId);
-// // //         monthly.setFrequency("MONTHLY");
-// // //         monthly.setPaymentMode("SUBSCRIPTION");
-// // //         monthly.setReceiptType("SUBSCRIPTION_MONTHLY");
-
-// // //         monthly.setPaymentId(paymentId);
-// // //         monthly.setAmount(amountPaid);
-// // //         monthly.setStatus("SUCCESS");
-// // //         monthly.setSubscriptionStatus("CHARGED");
-// // //         monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-// // //         monthly.setCycleCount(paidCount);
-// // //         monthly.setRecordType("SUBSCRIPTION_MONTHLY");
-
-// // //         monthly.setPaymentMethod(paymentEntity.optString("method"));
-// // //         monthly.setPaymentInfo(
-// // //                 paymentEntity.optString("bank",
-// // //                 paymentEntity.optString("wallet",
-// // //                 paymentEntity.optString("vpa", "")))
-// // //         );
-
-// // //         donationRepo.save(monthly);
-
-// // //         System.out.println("✅ Monthly debit saved | sub=" + subscriptionId +
-// // //                 " cycle=" + paidCount);
-
-// // //         try {
-// // //             Donourentity decryptedParent =
-// // //                     donationService.findByIdDecrypt(parent.getId());
-
-// // //             byte[] pdf =
-// // //                     pdfReceiptService.generateMonthlyDebitReceipt(
-// // //                             decryptedParent,
-// // //                             paymentId,
-// // //                             amountPaid
-// // //                     );
-
-// // //             mailService.sendDonationReceiptWithAttachment(
-// // //                     decryptedParent.getEmail(),
-// // //                     decryptedParent.getFirstName() + " " + decryptedParent.getLastName(),
-// // //                     amountPaid,
-// // //                     paymentId,
-// // //                     pdf,
-// // //                     "Monthly_Donation_" + paidCount + "_" + paymentId + ".pdf"
-// // //             );
-
-// // //         } catch (Exception e) {
-// // //             e.printStackTrace();
-// // //         }
-// // //     });
-// // // }
-
-
-// // //         return ResponseEntity.ok("OK");
-
-// // //     } catch (Exception e) {
-// // //         e.printStackTrace();
-// // //         return ResponseEntity.status(500).body("error");
-// // //     }
-// // // }
-// // // ------------------------------------------------------------------------
-// //         if ("subscription.charged".equals(event)) {
-
-// //     JSONObject paymentEntity = json.getJSONObject("payload")
-// //             .getJSONObject("payment")
-// //             .getJSONObject("entity");
-
-// //     JSONObject sub = json.getJSONObject("payload")
-// //             .getJSONObject("subscription")
-// //             .getJSONObject("entity");
-
-// //     String subscriptionId = paymentEntity.getString("subscription_id");
-// //     String paymentId = paymentEntity.getString("id");
-// //     double amountPaid = paymentEntity.getInt("amount") / 100.0;
-// //     int paidCount = sub.optInt("paid_count", 0);
-
-// //     // ✅ FINAL COPIES FOR LAMBDA
-// //     final String finalPaymentId = paymentId;
-// //     final double finalAmountPaid = amountPaid;
-// //     final int finalPaidCount = paidCount;
-// //     final JSONObject finalPaymentEntity = paymentEntity;
-
-// //     donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
-
-// //         Donourentity monthly = new Donourentity();
-
-// //         monthly.setFirstName(parent.getFirstName());
-// //         monthly.setLastName(parent.getLastName());
-// //         monthly.setEmail(parent.getEmail());
-// //         monthly.setMobile(parent.getMobile());
-
-// //         monthly.setSubscriptionId(subscriptionId);
-// //         monthly.setFrequency("MONTHLY");
-// //         monthly.setPaymentMode("SUBSCRIPTION");
-// //         monthly.setReceiptType("SUBSCRIPTION_MONTHLY");
-
-// //         monthly.setPaymentId(finalPaymentId);
-// //         monthly.setAmount(finalAmountPaid);
-// //         monthly.setStatus("SUCCESS");
-// //         monthly.setSubscriptionStatus("CHARGED");
-// //         monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-// //         monthly.setCycleCount(finalPaidCount);
-// //         monthly.setRecordType("SUBSCRIPTION_MONTHLY");
-
-// //         monthly.setPaymentMethod(finalPaymentEntity.optString("method"));
-// //         monthly.setPaymentInfo(
-// //                 finalPaymentEntity.optString(
-// //                         "bank",
-// //                         finalPaymentEntity.optString(
-// //                                 "wallet",
-// //                                 finalPaymentEntity.optString("vpa", "")
-// //                         )
-// //                 )
-// //         );
-
-// //         donationRepo.save(monthly);
-
-// //         System.out.println(
-// //                 "✅ Monthly debit saved | sub=" + subscriptionId +
-// //                 " cycle=" + finalPaidCount
-// //         );
-
-// //         try {
-// //             Donourentity decryptedParent =
-// //                     donationService.findByIdDecrypt(parent.getId());
-
-// //             byte[] pdf =
-// //                     pdfReceiptService.generateMonthlyDebitReceipt(
-// //                             decryptedParent,
-// //                             finalPaymentId,
-// //                             finalAmountPaid
-// //                     );
-
-// //             mailService.sendDonationReceiptWithAttachment(
-// //                     decryptedParent.getEmail(),
-// //                     decryptedParent.getFirstName() + " " + decryptedParent.getLastName(),
-// //                     finalAmountPaid,
-// //                     finalPaymentId,
-// //                     pdf,
-// //                     "Monthly_Donation_" + finalPaidCount + "_" + finalPaymentId + ".pdf"
-// //             );
-
-// //         } catch (Exception e) {
-// //             e.printStackTrace();
-// //         }
-// //     });
-// // }
-
-//  // --------------------------------------------------------------------
-// // WEBHOOK HANDLER
-// // --------------------------------------------------------------------
-// // @PostMapping("/razorpay-webhook")
-// // public ResponseEntity<?> webhook(@RequestBody String payload,
-// //                                  @RequestHeader("X-Razorpay-Signature") String signature) {
-
-// //     System.out.println("====================== WEBHOOK RECEIVED ======================");
-// //     System.out.println("Signature: " + signature);
-
-// //     try {
-// //         if (!Utils.verifyWebhookSignature(payload, signature, webhookSecret)) {
-// //             System.out.println("❌ Invalid webhook signature");
-// //             return ResponseEntity.status(400).body("Invalid signature");
-// //         }
-
-// //         JSONObject json = new JSONObject(payload);
-// //         String event = json.optString("event");
-// //         System.out.println("📣 EVENT = " + event);
-
-// //         // ------------------------------------------------------------------
-// //         // 1️⃣ ONE-TIME PAYMENT SAFETY (payment.captured)
-// //         // ------------------------------------------------------------------
-// //         if ("payment.captured".equals(event)) {
-
-// //             JSONObject p = json.getJSONObject("payload")
-// //                     .getJSONObject("payment")
-// //                     .getJSONObject("entity");
-
-// //             String orderId = p.optString("order_id", null);
-// //             String paymentId = p.optString("id", null);
-
-// //             if (orderId != null) {
-// //                 donationRepo.findByOrderId(orderId).ifPresent(donor -> {
-// //                     donor.setPaymentId(paymentId);
-// //                     donor.setStatus("SUCCESS");
-// //                     donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-// //                     donationRepo.save(donor);
-// //                     System.out.println("✅ payment.captured → updated donor");
-// //                 });
-// //             }
-// //         }
-
-// //         // ------------------------------------------------------------------
-// //         // 2️⃣ MANDATE EVENTS (for e-mandate, if enabled in webhooks)
-// //         // ------------------------------------------------------------------
-// //         // Razorpay emits mandate events from the Mandates product. The exact
-// //         // list depends on what you subscribed to (authorized/paused/revoked/etc).
-// //         if (event.startsWith("mandate.")) {
-// //             try {
-// //                 JSONObject m = json.getJSONObject("payload")
-// //                         .getJSONObject("mandate")
-// //                         .getJSONObject("entity");
-
-// //                 String subscriptionId = m.optString("subscription_id", null);
-// //                 String mandateId      = m.optString("id", null);
-// //                 String mandateStatus  = m.optString("status", "").toUpperCase();
-
-// //                 System.out.println("🔔 mandate event → sub=" + subscriptionId +
-// //                                    " mandate=" + mandateId +
-// //                                    " status=" + mandateStatus);
-
-// //                 if (subscriptionId != null) {
-// //                     donationRepo.findBySubscriptionId(subscriptionId).ifPresent(donor -> {
-
-// //                         donor.setRazorpayMandateId(mandateId);
-// //                         donor.setMandateId(mandateId);            // your generic field
-// //                         donor.setMandateStatus(mandateStatus);
-// //                         donor.setStoredFromWebhook(true);
-
-// //                         // Amount / frequency / dates – set if present
-// //                         if (m.has("amount")) {
-// //                             donor.setMandateAmount(m.getDouble("amount") / 100.0);
-// //                         }
-// //                         if (m.has("start_at")) {
-// //                             LocalDateTime start = LocalDateTime.ofEpochSecond(
-// //                                     m.getLong("start_at"), 0, ZoneId.of("Asia/Kolkata").getRules().getOffset(LocalDateTime.now())
-// //                             );
-// //                             donor.setMandateStartDate(start);
-// //                         }
-// //                         if (m.has("end_at")) {
-// //                             long endAt = m.optLong("end_at", 0L);
-// //                             if (endAt > 0) {
-// //                                 LocalDateTime end = LocalDateTime.ofEpochSecond(
-// //                                         endAt, 0, ZoneId.of("Asia/Kolkata").getRules().getOffset(LocalDateTime.now())
-// //                                 );
-// //                                 donor.setMandateEndDate(end);
-// //                             }
-// //                         }
-
-// //                         // If mandate is authorized/active → mark subscription/donation success
-// //                         if ("AUTHORIZED".equals(mandateStatus) ||
-// //                                 "ACTIVE".equals(mandateStatus)) {
-// //                             donor.setSubscriptionStatus("AUTHENTICATED");
-// //                             donor.setStatus("SUCCESS");
-// //                         } else if ("REVOKED".equals(mandateStatus) ||
-// //                                    "PAUSED".equals(mandateStatus) ||
-// //                                    "CANCELLED".equals(mandateStatus)) {
-// //                             donor.setStatus("FAILED");
-// //                         }
-
-// //                         donationRepo.save(donor);
-// //                         System.out.println("✅ mandate.* → updated donor " + donor.getId());
-
-// //                         // Send confirmation mail ONLY when first time becomes authorized
-// //                         if ("AUTHORIZED".equals(mandateStatus) &&
-// //                                 Boolean.FALSE.equals(donor.getMandateMailSent())) {
-
-// //                             try {
-// //                                 Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
-
-// //                                 byte[] pdf = pdfReceiptService.generateMandateConfirmation(decrypted);
-
-// //                                 mailService.sendDonationReceiptWithAttachment(
-// //                                         decrypted.getEmail(),
-// //                                         decrypted.getFirstName() + " " + decrypted.getLastName(),
-// //                                         decrypted.getMonthlyAmount(),
-// //                                         mandateId,
-// //                                         pdf,
-// //                                         "Mandate_Confirmation_" + mandateId + ".pdf"
-// //                                 );
-
-// //                                 donor.setMandateMailSent(true);
-// //                                 donationRepo.save(donor);
-
-// //                                 System.out.println("📧 Mandate confirmation mail sent");
-// //                             } catch (Exception e) {
-// //                                 e.printStackTrace();
-// //                             }
-// //                         }
-// //                     });
-// //                 }
-// //             } catch (Exception e) {
-// //                 System.out.println("⚠ Error in mandate.* handler");
-// //                 e.printStackTrace();
-// //             }
-// //         }
-
-// //         // ------------------------------------------------------------------
-// //         // 3️⃣ SUBSCRIPTION STATE EVENTS
-// //         // ------------------------------------------------------------------
-// //         if (event.startsWith("subscription.")) {
-
-// //             // subscription.charged also has payment entity; handle below for debits
-// //             JSONObject sub = json.getJSONObject("payload")
-// //                     .getJSONObject("subscription")
-// //                     .getJSONObject("entity");
-
-// //             updateDonorFromSubscriptionEntity(sub, event);
-// //         }
-
-// //         // ------------------------------------------------------------------
-// //         // 4️⃣ MONTHLY CHARGE (subscription.charged)
-// //         // ------------------------------------------------------------------
-// //         if ("subscription.charged".equals(event)) {
-
-// //             JSONObject p = json.getJSONObject("payload")
-// //                     .getJSONObject("payment")
-// //                     .getJSONObject("entity");
-
-// //             String subscriptionId = p.getString("subscription_id");
-// //             String paymentId = p.getString("id");
-// //             double amountPaid = p.getInt("amount") / 100.0;
-
-// //             donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
-
-// //                 Donourentity monthly = new Donourentity();
-
-// //                 monthly.setFirstName(parent.getFirstName());
-// //                 monthly.setLastName(parent.getLastName());
-// //                 monthly.setEmail(parent.getEmail());
-// //                 monthly.setMobile(parent.getMobile());
-
-// //                 monthly.setSubscriptionId(subscriptionId);
-// //                 monthly.setPaymentId(paymentId);
-// //                 monthly.setAmount(amountPaid);
-// //                 monthly.setStatus("SUCCESS");
-// //                 monthly.setSubscriptionStatus("CHARGED");
-// //                 monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-
-// //                 donationRepo.save(monthly);
-
-// //                 System.out.println("✅ Monthly debit saved (new row)");
-
-// //                 try {
-// //                     Donourentity decrypted = donationService.findByIdDecrypt(monthly.getId());
-
-// //                     byte[] pdf = pdfReceiptService.generateMonthlyDebitReceipt(
-// //                             decrypted, paymentId, amountPaid
-// //                     );
-
-// //                     mailService.sendDonationReceiptWithAttachment(
-// //                             decrypted.getEmail(),
-// //                             decrypted.getFirstName() + " " + decrypted.getLastName(),
-// //                             amountPaid,
-// //                             paymentId,
-// //                             pdf,
-// //                             "Monthly_Donation_" + paymentId + ".pdf"
-// //                     );
-
-// //                     System.out.println("📧 Monthly receipt sent");
-
-// //                 } catch (Exception e) {
-// //                     e.printStackTrace();
-// //                 }
-// //             });
-// //         }
-
-// //         return ResponseEntity.ok("OK");
-
-// //     } catch (Exception e) {
-// //         e.printStackTrace();
-// //         return ResponseEntity.status(500).body("error");
-// //     }
-// // }
-
-
-//   // Helper to sync subscription status from webhook into DB
-// private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
-//     try {
-//         String subscriptionId = sub.optString("id", null);
-//         String rzpStatus = sub.optString("status", "").toUpperCase();
-
-//         System.out.println(event + " → subscriptionId=" + subscriptionId + ", status=" + rzpStatus);
-
-//         if (subscriptionId == null) {
-//             System.out.println("⚠ subscription entity has no id");
-//             return;
-//         }
-
-//         Donourentity donor = donationRepo.findBySubscriptionId(subscriptionId).orElse(null);
-//         if (donor == null) {
-//             System.out.println("⚠ No donor found for subscriptionId=" + subscriptionId);
-//             return;
-//         }
-
-//         donor.setSubscriptionStatus(rzpStatus);
-
-//         if ("AUTHENTICATED".equals(rzpStatus) || "ACTIVE".equals(rzpStatus)) {
-//             donor.setStatus("SUCCESS");
-//         } else if ("HALTED".equals(rzpStatus) || "CANCELLED".equals(rzpStatus)
-//                 || "EXPIRED".equals(rzpStatus) || "COMPLETED".equals(rzpStatus)) {
-//             donor.setStatus("FAILED");
-//         }
-
-//         donationRepo.save(donor);
-//         System.out.println("✅ Subscription status updated from webhook for donorId=" + donor.getId());
-//     } catch (Exception e) {
-//         System.out.println("⚠ Error updating donor from subscription entity");
-//         e.printStackTrace();
-//     }
-// }
-
-        
-// }
-// --------------------------------------------------------------------------------------
 package com.komal.template_backend.controller;
 
 import com.komal.template_backend.model.Donourentity;
 import com.komal.template_backend.repo.DonationRepo;
 import com.komal.template_backend.service.DonationService;
 import com.komal.template_backend.service.MailService;
+// import com.komal.template_backend.service.pdfReceiptServiceee;
 import com.komal.template_backend.service.PdfReceiptServic;
-import com.razorpay.*;
+import com.razorpay.Order;
+import com.razorpay.Plan;
+import com.razorpay.RazorpayClient;
+import com.razorpay.Subscription;
 import com.razorpay.Utils;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -2759,36 +1465,49 @@ public class RazorpayController {
     @Value("${razorpay.webhook_secret}")
     private String webhookSecret;
 
+    @Value("${razorpay.subscription_years}")
+    private int subscriptionYears;
+
     @Autowired
     private DonationService donationService;
 
+    // @Autowired
+    // private pdfReceiptServiceee pdfReceiptServicee;
     @Autowired
-    private DonationRepo donationRepo;
+private PdfReceiptServic pdfReceiptService;
+;
 
-    @Autowired
-    private PdfReceiptServic pdfReceiptService;
 
     @Autowired
     private MailService mailService;
 
-    // ======================================================
-    // ONE-TIME ORDER
-    // ======================================================
+    @Autowired
+    private DonationRepo donationRepo;
+
+    // --------------------------------------------------------------------
+    // ONE-TIME ORDER CREATION
+    // --------------------------------------------------------------------
+
     @PostMapping("/create-order")
     public ResponseEntity<?> createOrder(@RequestBody Donourentity donor) {
+        System.out.println("========= CREATE ONE-TIME ORDER =========");
         try {
             RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
             JSONObject options = new JSONObject();
             options.put("amount", donor.getAmount() * 100);
             options.put("currency", "INR");
-            options.put("receipt", "rcpt_" + System.currentTimeMillis());
+            options.put("receipt", "receipt_" + System.currentTimeMillis());
+            options.put("payment_capture", 1);
 
+            System.out.println("Order options: " + options);
             Order order = client.orders.create(options);
+            System.out.println("Created order: " + order);
 
             donor.setOrderId(order.get("id"));
             donor.setStatus("PENDING");
             donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+
             Donourentity saved = donationService.saveDonation(donor);
 
             return ResponseEntity.ok(Map.of(
@@ -2796,195 +1515,1217 @@ public class RazorpayController {
                     "id", order.get("id"),
                     "donorId", saved.getId(),
                     "amount", donor.getAmount() * 100,
+                    "currency", "INR",
                     "keyId", keyId
             ));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500)
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
-    // ======================================================
-    // VERIFY ONE-TIME PAYMENT
-    // ======================================================
+    // --------------------------------------------------------------------
+    // ONE-TIME PAYMENT VERIFY
+    // --------------------------------------------------------------------
+
     @PostMapping("/verify")
-    public ResponseEntity<?> verify(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> verifyPayment(@RequestBody Map<String, Object> body) {
+        System.out.println("========= VERIFY ONE-TIME PAYMENT =========");
+        System.out.println("RAW BODY: " + body);
+
         try {
-            String orderId = body.get("razorpay_order_id");
-            String paymentId = body.get("razorpay_payment_id");
-            String signature = body.get("razorpay_signature");
+            String razorpayOrderId = (String) body.get("razorpay_order_id");
+            String razorpayPaymentId = (String) body.get("razorpay_payment_id");
+            String razorpaySignature = (String) body.get("razorpay_signature");
 
-            String payload = orderId + "|" + paymentId;
-            String expected = hmacSha256(payload, keySecret);
+            System.out.println("➡ order_id   = " + razorpayOrderId);
+            System.out.println("➡ payment_id = " + razorpayPaymentId);
+            System.out.println("➡ signature  = " + razorpaySignature);
 
-            if (!expected.equals(signature)) {
-                return ResponseEntity.badRequest().body("Invalid signature");
+            if (razorpayOrderId == null || razorpayPaymentId == null || razorpaySignature == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Missing required fields"
+                ));
+            }
+
+            String payload = razorpayOrderId + "|" + razorpayPaymentId;
+            String generatedSignature = hmacSha256(payload, keySecret);
+
+            System.out.println("VERIFY SIGNATURE");
+            System.out.println("  payload           = " + payload);
+            System.out.println("  expectedSignature = " + generatedSignature);
+            System.out.println("  receivedSignature = " + razorpaySignature);
+
+            if (!generatedSignature.equals(razorpaySignature)) {
+                System.out.println("❌ INVALID SIGNATURE (ONE-TIME)");
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Invalid signature"
+                ));
             }
 
             RazorpayClient client = new RazorpayClient(keyId, keySecret);
-            Payment payment = client.payments.fetch(paymentId);
+            com.razorpay.Payment payment = client.payments.fetch(razorpayPaymentId);
+            JSONObject paymentJson = payment.toJson();
+            System.out.println("Payment JSON: " + paymentJson);
 
-            Optional<Donourentity> opt = donationRepo.findByOrderId(orderId);
-            if (opt.isEmpty()) return ResponseEntity.badRequest().body("Donor not found");
+            String status = paymentJson.optString("status", "UNKNOWN");
+            int amount = paymentJson.optInt("amount", 0);
+            String payerEmail = paymentJson.optString("email", "");
+            String payerContact = paymentJson.optString("contact", "");
+            String method = paymentJson.optString("method", "");
+            String bank = paymentJson.optString("bank", "");
+            String vpa = paymentJson.optString("vpa", "");
+            String wallet = paymentJson.optString("wallet", "");
 
-            Donourentity donor = opt.get();
-            donor.setPaymentId(paymentId);
-            donor.setStatus("SUCCESS");
-            donor.setRecordType("ONE_TIME");
-            donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-            donationRepo.save(donor);
+            Optional<Donourentity> donorOpt = donationRepo.findByOrderId(razorpayOrderId);
+            if (donorOpt.isPresent()) {
+                Donourentity donor = donorOpt.get();
 
-            Donourentity dec = donationService.findByIdDecrypt(donor.getId());
-            byte[] pdf = pdfReceiptService.generateOneTimeDonationReceipt(
-                    dec, paymentId, donor.getAmount()
-            );
+                donor.setPaymentId(razorpayPaymentId);
+                donor.setSignature(razorpaySignature);
+                donor.setStatus(status.equalsIgnoreCase("captured") ? "SUCCESS" : status.toUpperCase());
+                donor.setPaymentMethod(method);
+                donor.setRecordType("ONE_TIME");
+                donor.setUpiId(vpa);
+                donor.setWallet(wallet);
+                donor.setPaymentInfo(bank.isEmpty() ? vpa : bank);
+                donor.setPayerEmail(payerEmail);
+                donor.setPayerContact(payerContact);
+                donor.setAmount(amount / 100.0);
+                donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
 
-            mailService.sendDonationReceiptWithAttachment(
-                    dec.getEmail(),
-                    dec.getFirstName(),
-                    donor.getAmount(),
-                    paymentId,
-                    pdf,
-                    "DonationReceipt.pdf"
-            );
+                donationService.saveDonation(donor);
+                donorId = donor.getId(); 
+
+                // ----- Receipt + Email -----
+                try {
+                    Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
+                    if (decrypted != null) {
+                        byte[] pdf = pdfReceiptService.generateOneTimeDonationReceipt(
+                                decrypted,
+                                decrypted.getPaymentId(),
+                                decrypted.getAmount()
+                        );
+
+                        String recipient = (decrypted.getPayerEmail() != null &&
+                                !decrypted.getPayerEmail().isBlank())
+                                ? decrypted.getPayerEmail()
+                                : decrypted.getEmail();
+
+                        if (recipient != null && !recipient.isBlank()) {
+                            mailService.sendDonationReceiptWithAttachment(
+                                    recipient,
+                                    decrypted.getFirstName() + " " + decrypted.getLastName(),
+                                    decrypted.getAmount(),
+                                    decrypted.getPaymentId(),
+                                    pdf,
+                                    "DonationReceipt_" + decrypted.getPaymentId() + ".pdf"
+                            );
+                        }
+                    }
+                } catch (Exception e) {
+                    System.out.println("⚠ Error while sending one-time receipt");
+                    e.printStackTrace();
+                }
+            } else {
+                System.out.println("⚠ No donor found for orderId=" + razorpayOrderId);
+            }
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
-                    "donorId", donor.getId()
+                    "status", status,
+                    "amount", amount / 100.0,
+                    "donorId", donorId  , // ✅ THIS WAS MISSING
             ));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
-    // ======================================================
-    // CREATE SUBSCRIPTION (E-MANDATE)
-    // ======================================================
-    @PostMapping("/create-subscription")
-    public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
-        try {
-            String donorId = req.get("donorId").toString();
-            int amount = Integer.parseInt(req.get("amount").toString());
+    // --------------------------------------------------------------------
+    // HMAC UTILITY
+    // --------------------------------------------------------------------
 
-            Donourentity donor = donationRepo.findById(donorId)
-                    .orElseThrow(() -> new RuntimeException("Donor not found"));
-
-            RazorpayClient client = new RazorpayClient(keyId, keySecret);
-
-            JSONObject item = new JSONObject();
-            item.put("name", "Monthly Donation");
-            item.put("amount", amount * 100);
-            item.put("currency", "INR");
-
-            JSONObject planReq = new JSONObject();
-            planReq.put("period", "monthly");
-            planReq.put("interval", 1);
-            planReq.put("item", item);
-
-            Plan plan = client.plans.create(planReq);
-
-            JSONObject subReq = new JSONObject();
-            subReq.put("plan_id", plan.get("id"));
-            subReq.put("customer_notify", 1);
-
-            Subscription sub = client.subscriptions.create(subReq);
-
-            donor.setSubscriptionId(sub.get("id"));
-            donor.setSubscriptionStatus("CREATED");
-            donor.setRecordType("SUBSCRIPTION_PARENT");
-            donationRepo.save(donor);
-
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "subscription_id", sub.get("id"),
-                    "keyId", keyId
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(e.getMessage());
-        }
-    }
-
-    // ======================================================
-    // WEBHOOK
-    // ======================================================
-    @PostMapping("/razorpay-webhook")
-    public ResponseEntity<?> webhook(
-            @RequestBody String payload,
-            @RequestHeader("X-Razorpay-Signature") String signature) {
-
-        try {
-            if (!Utils.verifyWebhookSignature(payload, signature, webhookSecret)) {
-                return ResponseEntity.status(400).body("Invalid signature");
-            }
-
-            JSONObject json = new JSONObject(payload);
-            String event = json.getString("event");
-            JSONObject data = json.getJSONObject("payload");
-
-            // ---------- MANDATE AUTH ----------
-            if (event.startsWith("subscription.")
-                    && data.has("subscription")) {
-
-                JSONObject sub = data.getJSONObject("subscription").getJSONObject("entity");
-                String subId = sub.getString("id");
-
-                donationRepo.findBySubscriptionId(subId).ifPresent(donor -> {
-                    donor.setSubscriptionStatus(sub.optString("status"));
-                    donor.setStatus("SUCCESS");
-                    donationRepo.save(donor);
-                });
-            }
-
-            // ---------- MONTHLY DEBIT ----------
-            if ("subscription.charged".equals(event)) {
-
-                JSONObject payment = data.getJSONObject("payment").getJSONObject("entity");
-                JSONObject sub = data.getJSONObject("subscription").getJSONObject("entity");
-
-                String subId = payment.getString("subscription_id");
-                String payId = payment.getString("id");
-                double amount = payment.getInt("amount") / 100.0;
-                int cycle = sub.optInt("paid_count");
-
-                donationRepo.findBySubscriptionId(subId).ifPresent(parent -> {
-
-                    Donourentity monthly = new Donourentity();
-                    monthly.setFirstName(parent.getFirstName());
-                    monthly.setLastName(parent.getLastName());
-                    monthly.setEmail(parent.getEmail());
-                    monthly.setSubscriptionId(subId);
-                    monthly.setPaymentId(payId);
-                    monthly.setAmount(amount);
-                    monthly.setCycleCount(cycle);
-                    monthly.setRecordType("SUBSCRIPTION_MONTHLY");
-                    monthly.setStatus("SUCCESS");
-                    monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-
-                    donationRepo.save(monthly);
-                });
-            }
-
-            return ResponseEntity.ok("OK");
-
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("ERROR");
-        }
-    }
-
-    // ======================================================
-    // HMAC
-    // ======================================================
     private String hmacSha256(String data, String secret) throws Exception {
-        Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(secret.getBytes(), "HmacSHA256"));
-        byte[] hash = mac.doFinal(data.getBytes());
+        Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
+        SecretKeySpec key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
+        sha256_HMAC.init(key);
+        byte[] hash = sha256_HMAC.doFinal(data.getBytes());
 
         StringBuilder sb = new StringBuilder();
         for (byte b : hash) {
-            sb.append(String.format("%02x", b));
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) sb.append('0');
+            sb.append(hex);
         }
         return sb.toString();
     }
+    private boolean verifyWebhook(String payload, String headerSignature) {
+        try {
+            String expected = hmacSha256(payload, webhookSecret);
+            return expected.equals(headerSignature);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    // --------------------------------------------------------------------
+    // CREATE DONOR (SUBSCRIPTION)
+    // --------------------------------------------------------------------
+
+    @PostMapping("/create-donor-record")
+    public ResponseEntity<?> createDonor(@RequestBody Donourentity donor) {
+        System.out.println("========= CREATE SUBSCRIPTION DONOR RECORD =========");
+        try {
+            donor.setStatus("PENDING");
+            donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+            Donourentity saved = donationService.saveDonation(donor);
+            return ResponseEntity.ok(Map.of("success", true, "donorId", saved.getId()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    private int parseIntSafe(Object o, int fallback) {
+        try {
+            if (o == null) return fallback;
+            if (o instanceof Number) return ((Number) o).intValue();
+            String s = String.valueOf(o).trim();
+            return s.isEmpty() ? fallback : Integer.parseInt(s);
+        } catch (Exception ex) {
+            return fallback;
+        }
+    }
+
+    // private long getNextStartDate(int startDay) {
+    //     LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+    //     LocalDateTime next;
+
+    //     int today = now.getDayOfMonth();
+    //     if (today < startDay) {
+    //         next = now.withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
+    //     } else {
+    //         next = now.plusMonths(1).withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
+    //     }
+
+    //     return next.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
+    // }
+private long getNextStartDate(int startDay) {
+
+    LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+
+    // ✅ ALWAYS move to NEXT month
+    LocalDateTime nextMonth =
+            now.plusMonths(1)
+               .withDayOfMonth(Math.min(startDay,
+                       now.plusMonths(1).toLocalDate().lengthOfMonth()))
+               .withHour(0)
+               .withMinute(0)
+               .withSecond(0)
+               .withNano(0);
+
+    return nextMonth.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
 }
+
+  // --------------------------------------------------------------------
+// SUBSCRIPTION CREATE  (E-MANDATE)
+// --------------------------------------------------------------------
+
+@PostMapping("/create-subscription")
+public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+    System.out.println("====================== CREATE SUBSCRIPTION START ======================");
+    System.out.println("Received: " + req);
+
+    try {
+        String donorId = String.valueOf(req.get("donorId"));
+        int amount = parseIntSafe(req.get("amount"), 0);
+
+        if (amount <= 0) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "message", "Invalid amount"));
+        }
+
+        int starterAmount = parseIntSafe(req.get("starterAmount"), 10);
+        if (starterAmount < 1 || starterAmount > 28) {
+            starterAmount = 10;
+        }
+
+        Donourentity donor = donationRepo.findById(donorId)
+                .orElseThrow(() -> new RuntimeException("Donor not found: " + donorId));
+
+        RazorpayClient client = new RazorpayClient(keyId, keySecret);
+
+        // --------- PLAN ---------
+        Map<String, Object> item = Map.of(
+                "name", "Monthly Donation",
+                "amount", amount * 100,   // paise
+                "currency", "INR"
+        );
+
+        Map<String, Object> planRequest = Map.of(
+                "period", "monthly",
+                "interval", 1,
+                "item", item
+        );
+
+        System.out.println("Plan request: " + new JSONObject(planRequest).toString(2));
+        Plan plan = client.plans.create(new JSONObject(planRequest));
+        System.out.println("Created plan: " + plan);
+
+        donor.setPlanId(plan.get("id"));
+        donor.setRazorpayPlanId(plan.get("id"));
+        donor.setMonthlyAmount((double) amount);
+        donationRepo.save(donor);
+
+        // --------- SUBSCRIPTION (E-MANDATE) ---------
+        Map<String, Object> notes = Map.of(
+                "donorId", donorId,
+                "monthlyAmount", String.valueOf(amount)
+        );
+
+        Map<String, Object> subscriptionRequest = new HashMap<>();
+        subscriptionRequest.put("plan_id", plan.get("id"));
+        subscriptionRequest.put("customer_notify", 1);
+        subscriptionRequest.put("total_count", (subscriptionYears * 12) - 1);
+        subscriptionRequest.put("notes", notes);
+
+        // ⚠ For e-mandate, do NOT force a separate ₹1 upfront payment from our side.
+        // Razorpay/bank will handle the auth txn and may show 0/1 rupee.
+        // So we REMOVE the addons block that we had earlier.
+
+        Integer useStartDay = donor.getStartDay() != null ? donor.getStartDay() : starterAmount;
+        if (useStartDay != null) {
+            subscriptionRequest.put("start_at", getNextStartDate(useStartDay));
+        }
+
+        System.out.println("📦 Subscription Payload: " + new JSONObject(subscriptionRequest).toString(2));
+
+        Subscription subscription = client.subscriptions.create(new JSONObject(subscriptionRequest));
+        System.out.println("Created subscription: " + subscription);
+
+        donor.setSubscriptionId(subscription.get("id"));
+        donor.setSubscriptionStatus("CREATED");
+        donor.setStartDay(useStartDay);
+
+        // e-mandate fields – initially pending
+        donor.setMandateStatus("PENDING");
+        donor.setMandateAmount((double) amount);
+        donor.setMandateFrequency("MONTHLY");
+
+        donationRepo.save(donor);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "subscription_id", subscription.get("id"),
+                "plan_id", plan.get("id"),
+                "keyId", keyId
+        ));
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500)
+                .body(Map.of("success", false, "message", e.getMessage()));
+    }
+}
+@PostMapping("/razorpay-webhook")
+public ResponseEntity<?> webhook(
+        @RequestBody String payload,
+        @RequestHeader("X-Razorpay-Signature") String signature) {
+
+    System.out.println("====================== WEBHOOK RECEIVED ======================");
+
+    try {
+        // ✅ Signature verification
+        if (!Utils.verifyWebhookSignature(payload, signature, webhookSecret)) {
+            return ResponseEntity.status(400).body("Invalid signature");
+        }
+
+        JSONObject json = new JSONObject(payload);
+        String event = json.optString("event");
+
+        JSONObject payloadObj = json.optJSONObject("payload");
+        if (payloadObj == null) return ResponseEntity.ok("IGNORED");
+
+        JSONObject paymentEntity = payloadObj
+                .optJSONObject("payment")
+                .optJSONObject("entity");
+
+        JSONObject subEntity = payloadObj
+                .optJSONObject("subscription")
+                .optJSONObject("entity");
+
+        JSONObject mandateEntity = payloadObj
+                .optJSONObject("mandate")
+                .optJSONObject("entity");
+
+        // ============================================================
+        // 1️⃣ ONE-TIME PAYMENT SAFETY
+        // ============================================================
+        if ("payment.captured".equals(event) && paymentEntity != null) {
+
+            String orderId = paymentEntity.optString("order_id");
+            String paymentId = paymentEntity.optString("id");
+
+            donationRepo.findByOrderId(orderId).ifPresent(donor -> {
+                donor.setPaymentId(paymentId);
+                donor.setStatus("SUCCESS");
+                donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+                donationRepo.save(donor);
+            });
+        }
+
+        // ============================================================
+        // 2️⃣ SUBSCRIPTION AUTHENTICATION (MANDATE APPROVED)
+        // ============================================================
+        if (("subscription.authenticated".equals(event)
+                || "subscription.activated".equals(event))
+                && subEntity != null) {
+
+            String subscriptionId = subEntity.optString("id");
+
+            donationRepo.findBySubscriptionId(subscriptionId).ifPresent(donor -> {
+
+                donor.setSubscriptionStatus("AUTHENTICATED");
+                donor.setMandateStatus("AUTHORIZED");
+                donor.setRecordType("SUBSCRIPTION_PARENT");
+                donor.setStatus("SUCCESS");
+
+                if (mandateEntity != null) {
+                    donor.setMandateId(mandateEntity.optString("id"));
+                    donor.setRazorpayMandateId(mandateEntity.optString("id"));
+                }
+
+                donationRepo.save(donor);
+
+                // ✅ send mail ONCE
+                if (Boolean.FALSE.equals(donor.getMandateMailSent())) {
+                    try {
+                        Donourentity decrypted =
+                                donationService.findByIdDecrypt(donor.getId());
+
+                        byte[] pdf =
+                                pdfReceiptService.generateMandateConfirmation(decrypted);
+
+                        mailService.sendDonationReceiptWithAttachment(
+                                decrypted.getEmail(),
+                                decrypted.getFirstName() + " " + decrypted.getLastName(),
+                                decrypted.getMonthlyAmount(),
+                                subscriptionId,
+                                pdf,
+                                "Mandate_Confirmation_" + subscriptionId + ".pdf"
+                        );
+
+                        donor.setMandateMailSent(true);
+                        donationRepo.save(donor);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+
+        // ============================================================
+        // 3️⃣ MONTHLY DEBIT (subscription.charged)
+        // ============================================================
+        if ("subscription.charged".equals(event)
+                && paymentEntity != null
+                && subEntity != null) {
+
+            final String subscriptionId =
+                    paymentEntity.getString("subscription_id");
+
+            final String paymentId =
+                    paymentEntity.getString("id");
+
+            final double amountPaid =
+                    paymentEntity.getInt("amount") / 100.0;
+
+            final int cycleCount =
+                    subEntity.optInt("paid_count", 0);
+
+            donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
+
+                Donourentity monthly = new Donourentity();
+
+                monthly.setFirstName(parent.getFirstName());
+                monthly.setLastName(parent.getLastName());
+                monthly.setEmail(parent.getEmail());
+                monthly.setMobile(parent.getMobile());
+
+                monthly.setSubscriptionId(subscriptionId);
+                monthly.setPaymentId(paymentId);
+                monthly.setAmount(amountPaid);
+                monthly.setStatus("SUCCESS");
+                monthly.setSubscriptionStatus("CHARGED");
+                monthly.setFrequency("MONTHLY");
+                monthly.setRecordType("SUBSCRIPTION_MONTHLY");
+                monthly.setCycleCount(cycleCount);
+                // monthly.setCycleCount(paidCount);   // ✅ REQUIRED
+               
+
+                monthly.setDonationDate(
+                        LocalDateTime.now(ZoneId.of("Asia/Kolkata"))
+                );
+
+                donationRepo.save(monthly);
+
+                // ✅ Monthly receipt
+                try {
+                    Donourentity decryptedParent =
+                            donationService.findByIdDecrypt(parent.getId());
+
+                    byte[] pdf =
+                            pdfReceiptService.generateMonthlyDebitReceipt(
+                                    decryptedParent,
+                                    paymentId,
+                                    amountPaid
+                            );
+
+                    mailService.sendDonationReceiptWithAttachment(
+                            decryptedParent.getEmail(),
+                            decryptedParent.getFirstName() + " " + decryptedParent.getLastName(),
+                            amountPaid,
+                            paymentId,
+                            pdf,
+                            "Monthly_Donation_" + cycleCount + "_" + paymentId + ".pdf"
+                    );
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        return ResponseEntity.ok("OK");
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500).body("ERROR");
+    }
+}
+
+
+// --------------------------------------------------------------------
+// WEBHOOK HANDLER -latest
+// --------------------------------------------------------------------
+// @PostMapping("/razorpay-webhook")
+// public ResponseEntity<?> webhook(
+//         @RequestBody String payload,
+//         @RequestHeader("X-Razorpay-Signature") String signature) {
+
+//     System.out.println("====================== WEBHOOK RECEIVED ======================");
+//     System.out.println("Signature: " + signature);
+//     System.out.println("Payload: " + payload);
+
+//     try {
+//         if (!Utils.verifyWebhookSignature(payload, signature, webhookSecret)) {
+//             System.out.println("❌ Invalid webhook signature");
+//             return ResponseEntity.status(400).body("Invalid signature");
+//         }
+
+//         JSONObject json = new JSONObject(payload);
+//         String event = json.optString("event");
+//         System.out.println("📣 EVENT = " + event);
+
+//         // Safe extraction of payload objects
+//         JSONObject payloadObj = json.optJSONObject("payload");
+
+//         JSONObject payment = null;
+//         JSONObject subscription = null;
+//         JSONObject mandate = null;
+
+//         if (payloadObj != null) {
+//             JSONObject pWrap = payloadObj.optJSONObject("payment");
+//             if (pWrap != null) payment = pWrap.optJSONObject("entity");
+
+//             JSONObject sWrap = payloadObj.optJSONObject("subscription");
+//             if (sWrap != null) subscription = sWrap.optJSONObject("entity");
+
+//             JSONObject mWrap = payloadObj.optJSONObject("mandate");
+//             if (mWrap != null) mandate = mWrap.optJSONObject("entity");
+//         }
+
+//         // ------------------------------------------------------------------
+//         // 1️⃣ ONE-TIME PAYMENT SAFETY (payment.captured)
+//         // ------------------------------------------------------------------
+//         if ("payment.captured".equals(event) && payment != null) {
+
+//             String orderId   = payment.optString("order_id", null);
+//             String paymentId = payment.optString("id", null);
+
+//             if (orderId != null) {
+//                 donationRepo.findByOrderId(orderId).ifPresent(donor -> {
+//                     donor.setPaymentId(paymentId);
+//                     donor.setStatus("SUCCESS");
+//                     donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+//                     donationRepo.save(donor);
+//                     System.out.println("✅ payment.captured → updated donor");
+//                 });
+//             }
+//         }
+
+//         // ------------------------------------------------------------------
+//         // 2️⃣ SUBSCRIPTION AUTHENTICATED  → BANK MANDATE APPROVED
+//         // ------------------------------------------------------------------
+//         if ("subscription.authenticated".equals(event)
+//                 || "subscription.activated".equals(event)) {
+
+//             if (subscription == null) {
+//                 System.out.println("⚠ subscription entity missing in payload");
+//             } else {
+//                 String subscriptionId = subscription.optString("id", null);
+//                 System.out.println("✅ subscription.authenticated for subId=" + subscriptionId);
+
+//                 if (subscriptionId != null) {
+//                     donationRepo.findBySubscriptionId(subscriptionId).ifPresent(donor -> {
+
+//                         // --- Update statuses ---
+//                         donor.setSubscriptionStatus("AUTHENTICATED");
+//                         donor.setRecordType("SUBSCRIPTION_PARENT");
+//                         donor.setStatus("SUCCESS");
+
+//                         // Treat this as mandate authorized
+//                         donor.setMandateStatus("AUTHORIZED");
+
+//                         // Save payer details from payment if present
+//                         if (payment != null) {
+//                             donor.setPaymentId(payment.optString("id"));
+//                             donor.setPayerEmail(
+//                                     payment.optString("email", donor.getEmail()));
+//                             donor.setPayerContact(payment.optString("contact"));
+//                             donor.setPaymentMethod(payment.optString("method"));
+//                         }
+
+//                         // Save mandate id/amount if mandate object present
+//                         if (mandate != null) {
+//                             donor.setRazorpayMandateId(mandate.optString("id"));
+//                             donor.setMandateId(mandate.optString("id"));
+//                             donor.setMandateAmount(mandate.optDouble("amount", donor.getMandateAmount() != null ?
+//                                     donor.getMandateAmount() * 100 : 0.0) / 100.0);
+//                             donor.setMandateStatus(mandate.optString("status", "AUTHORIZED"));
+//                         }
+
+//                         donationRepo.save(donor);
+
+//                         // --- Send confirmation mail ONCE after bank approval ---
+//                         if (Boolean.FALSE.equals(donor.getMandateMailSent())) {
+//                             try {
+//                                 Donourentity decrypted =
+//                                         donationService.findByIdDecrypt(donor.getId());
+
+//                                 byte[] pdf =
+//                                         pdfReceiptService.generateMandateConfirmation(decrypted);
+
+//                                 mailService.sendDonationReceiptWithAttachment(
+//                                         decrypted.getEmail(),
+//                                         decrypted.getFirstName() + " " + decrypted.getLastName(),
+//                                         decrypted.getMonthlyAmount(),
+//                                         subscriptionId,
+//                                         pdf,
+//                                         "Mandate_Confirmation_" + subscriptionId + ".pdf"
+//                                 );
+
+//                                 donor.setMandateMailSent(true);
+//                                 donationRepo.save(donor);
+
+//                                 System.out.println("📧 Mandate confirmation mail sent");
+
+//                             } catch (Exception e) {
+//                                 System.out.println("❌ Error sending mandate confirmation mail");
+//                                 e.printStackTrace();
+//                             }
+//                         }
+//                     });
+//                 }
+//             }
+//         }
+
+//         // ------------------------------------------------------------------
+//         // 3️⃣ MONTHLY DEBIT (subscription.charged) → MONTHLY RECEIPT
+//         // ------------------------------------------------------------------
+//         // if ("subscription.charged".equals(event) && payment != null) {
+
+//         //     String subscriptionId = payment.optString("subscription_id", null);
+//         //     String paymentId      = payment.optString("id", null);
+//         //     double amountPaid     = payment.optInt("amount", 0) / 100.0;
+
+//         //     System.out.println("💳 subscription.charged for sub=" + subscriptionId +
+//         //                        " payment=" + paymentId + " amount=" + amountPaid);
+
+//         //     if (subscriptionId != null) {
+//         //         donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
+
+//         //             // 👉 Save monthly transaction row (child record)
+//         //             Donourentity monthly = new Donourentity();
+//         //             monthly.setFirstName(parent.getFirstName());
+//         //             monthly.setLastName(parent.getLastName());
+//         //             monthly.setEmail(parent.getEmail());
+//         //             monthly.setMobile(parent.getMobile());
+//         //             monthly.setSubscriptionId(subscriptionId);
+//         //             monthly.setPaymentId(paymentId);
+//         //             monthly.setAmount(amountPaid);
+//         //             monthly.setStatus("SUCCESS");
+//         //             monthly.setSubscriptionStatus("CHARGED");
+//         //             monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+
+//         //             donationRepo.save(monthly);
+//         //             System.out.println("✅ Monthly debit saved (new row)");
+
+//         //             // 👉 Send monthly receipt using PARENT donor details
+//         //             try {
+//         //                 Donourentity decryptedParent =
+//         //                         donationService.findByIdDecrypt(parent.getId());
+
+//         //                 byte[] pdf =
+//         //                         pdfReceiptService.generateMonthlyDebitReceipt(
+//         //                                 decryptedParent, paymentId, amountPaid
+//         //                         );
+
+//         //                 mailService.sendDonationReceiptWithAttachment(
+//         //                         decryptedParent.getEmail(),
+//         //                         decryptedParent.getFirstName() + " " + decryptedParent.getLastName(),
+//         //                         amountPaid,
+//         //                         paymentId,
+//         //                         pdf,
+//         //                         "Monthly_Donation_" + paymentId + ".pdf"
+//         //                 );
+
+//         //                 System.out.println("📧 Monthly receipt sent");
+
+//         //             } catch (Exception e) {
+//         //                 System.out.println("❌ Error sending monthly debit receipt");
+//         //                 e.printStackTrace();
+//         //             }
+//         //         });
+//         //     }
+//         // }
+//         // -----------------------------------------------------------------------------------------
+// //         if ("subscription.charged".equals(event)) {
+
+// //     JSONObject payment = json.getJSONObject("payload")
+// //             .getJSONObject("payment")
+// //             .getJSONObject("entity");
+
+// //     JSONObject sub = json.getJSONObject("payload")
+// //             .getJSONObject("subscription")
+// //             .getJSONObject("entity");
+
+// //     String subscriptionId = payment.getString("subscription_id");
+// //     String paymentId = payment.getString("id");
+// //     double amountPaid = payment.getInt("amount") / 100.0;
+
+// //     int paidCount = sub.optInt("paid_count", 0); // ✅ cycle number
+
+// //     donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
+
+// //         // ✅ CREATE MONTHLY CHILD RECORD
+// //         Donourentity monthly = new Donourentity();
+
+// //         // -----------------------------
+// //         // INHERIT FROM PARENT
+// //         // -----------------------------
+// //         monthly.setFirstName(parent.getFirstName());
+// //         monthly.setLastName(parent.getLastName());
+// //         monthly.setEmail(parent.getEmail());
+// //         monthly.setMobile(parent.getMobile());
+
+// //         monthly.setSubscriptionId(subscriptionId);
+// //         monthly.setFrequency("MONTHLY");
+// //         monthly.setPaymentMode("SUBSCRIPTION");
+// //         monthly.setReceiptType("SUBSCRIPTION_MONTHLY");
+
+// //         // -----------------------------
+// //         // DEBIT-SPECIFIC DATA
+// //         // -----------------------------
+// //         monthly.setPaymentId(paymentId);
+// //         monthly.setAmount(amountPaid);
+// //         monthly.setStatus("SUCCESS");
+// //         monthly.setSubscriptionStatus("CHARGED");
+// //         monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+// //         monthly.setCycleCount(paidCount);
+// //         monthly.setRecordType("SUBSCRIPTION_MONTHLY");
+
+// //         // optional
+// //         monthly.setPaymentMethod(payment.optString("method"));
+// //         monthly.setPaymentInfo(
+// //                 payment.optString("bank",
+// //                 payment.optString("wallet",
+// //                 payment.optString("vpa", "")))
+// //         );
+
+// //         donationRepo.save(monthly);
+
+// //         System.out.println(
+// //                 "✅ Monthly debit saved | sub=" + subscriptionId +
+// //                 " cycle=" + paidCount
+// //         );
+
+// //         // -----------------------------
+// //         // ✅ SEND MONTHLY RECEIPT
+// //         // -----------------------------
+// //         try {
+// //             Donourentity decryptedParent =
+// //                     donationService.findByIdDecrypt(parent.getId());
+
+// //             byte[] pdf =
+// //                     pdfReceiptService.generateMonthlyDebitReceipt(
+// //                             decryptedParent,
+// //                             paymentId,
+// //                             amountPaid,
+// //                             paidCount // ✅ pass cycle count
+// //                     );
+
+// //             mailService.sendDonationReceiptWithAttachment(
+// //                     decryptedParent.getEmail(),
+// //                     decryptedParent.getFirstName() + " " + decryptedParent.getLastName(),
+// //                     amountPaid,
+// //                     paymentId,
+// //                     pdf,
+// //                     "Monthly_Donation_" + paidCount + "_" + paymentId + ".pdf"
+// //             );
+
+// //             System.out.println("📧 Monthly receipt sent (cycle " + paidCount + ")");
+
+// //         } catch (Exception e) {
+// //             e.printStackTrace();
+// //         }
+// //     });
+// // }
+//         // -----------------------------------------------------------------------------------
+// // if ("subscription.charged".equals(event)) {
+
+// //     JSONObject paymentEntity = json.getJSONObject("payload")
+// //             .getJSONObject("payment")
+// //             .getJSONObject("entity");
+
+// //     JSONObject sub = json.getJSONObject("payload")
+// //             .getJSONObject("subscription")
+// //             .getJSONObject("entity");
+
+// //     String subscriptionId = paymentEntity.getString("subscription_id");
+// //     String paymentId = paymentEntity.getString("id");
+// //     double amountPaid = paymentEntity.getInt("amount") / 100.0;
+
+// //     int paidCount = sub.optInt("paid_count", 0);
+
+// //     donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
+
+// //         Donourentity monthly = new Donourentity();
+
+// //         monthly.setFirstName(parent.getFirstName());
+// //         monthly.setLastName(parent.getLastName());
+// //         monthly.setEmail(parent.getEmail());
+// //         monthly.setMobile(parent.getMobile());
+
+// //         monthly.setSubscriptionId(subscriptionId);
+// //         monthly.setFrequency("MONTHLY");
+// //         monthly.setPaymentMode("SUBSCRIPTION");
+// //         monthly.setReceiptType("SUBSCRIPTION_MONTHLY");
+
+// //         monthly.setPaymentId(paymentId);
+// //         monthly.setAmount(amountPaid);
+// //         monthly.setStatus("SUCCESS");
+// //         monthly.setSubscriptionStatus("CHARGED");
+// //         monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+// //         monthly.setCycleCount(paidCount);
+// //         monthly.setRecordType("SUBSCRIPTION_MONTHLY");
+
+// //         monthly.setPaymentMethod(paymentEntity.optString("method"));
+// //         monthly.setPaymentInfo(
+// //                 paymentEntity.optString("bank",
+// //                 paymentEntity.optString("wallet",
+// //                 paymentEntity.optString("vpa", "")))
+// //         );
+
+// //         donationRepo.save(monthly);
+
+// //         System.out.println("✅ Monthly debit saved | sub=" + subscriptionId +
+// //                 " cycle=" + paidCount);
+
+// //         try {
+// //             Donourentity decryptedParent =
+// //                     donationService.findByIdDecrypt(parent.getId());
+
+// //             byte[] pdf =
+// //                     pdfReceiptService.generateMonthlyDebitReceipt(
+// //                             decryptedParent,
+// //                             paymentId,
+// //                             amountPaid
+// //                     );
+
+// //             mailService.sendDonationReceiptWithAttachment(
+// //                     decryptedParent.getEmail(),
+// //                     decryptedParent.getFirstName() + " " + decryptedParent.getLastName(),
+// //                     amountPaid,
+// //                     paymentId,
+// //                     pdf,
+// //                     "Monthly_Donation_" + paidCount + "_" + paymentId + ".pdf"
+// //             );
+
+// //         } catch (Exception e) {
+// //             e.printStackTrace();
+// //         }
+// //     });
+// // }
+
+
+// //         return ResponseEntity.ok("OK");
+
+// //     } catch (Exception e) {
+// //         e.printStackTrace();
+// //         return ResponseEntity.status(500).body("error");
+// //     }
+// // }
+// // ------------------------------------------------------------------------
+//         if ("subscription.charged".equals(event)) {
+
+//     JSONObject paymentEntity = json.getJSONObject("payload")
+//             .getJSONObject("payment")
+//             .getJSONObject("entity");
+
+//     JSONObject sub = json.getJSONObject("payload")
+//             .getJSONObject("subscription")
+//             .getJSONObject("entity");
+
+//     String subscriptionId = paymentEntity.getString("subscription_id");
+//     String paymentId = paymentEntity.getString("id");
+//     double amountPaid = paymentEntity.getInt("amount") / 100.0;
+//     int paidCount = sub.optInt("paid_count", 0);
+
+//     // ✅ FINAL COPIES FOR LAMBDA
+//     final String finalPaymentId = paymentId;
+//     final double finalAmountPaid = amountPaid;
+//     final int finalPaidCount = paidCount;
+//     final JSONObject finalPaymentEntity = paymentEntity;
+
+//     donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
+
+//         Donourentity monthly = new Donourentity();
+
+//         monthly.setFirstName(parent.getFirstName());
+//         monthly.setLastName(parent.getLastName());
+//         monthly.setEmail(parent.getEmail());
+//         monthly.setMobile(parent.getMobile());
+
+//         monthly.setSubscriptionId(subscriptionId);
+//         monthly.setFrequency("MONTHLY");
+//         monthly.setPaymentMode("SUBSCRIPTION");
+//         monthly.setReceiptType("SUBSCRIPTION_MONTHLY");
+
+//         monthly.setPaymentId(finalPaymentId);
+//         monthly.setAmount(finalAmountPaid);
+//         monthly.setStatus("SUCCESS");
+//         monthly.setSubscriptionStatus("CHARGED");
+//         monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+//         monthly.setCycleCount(finalPaidCount);
+//         monthly.setRecordType("SUBSCRIPTION_MONTHLY");
+
+//         monthly.setPaymentMethod(finalPaymentEntity.optString("method"));
+//         monthly.setPaymentInfo(
+//                 finalPaymentEntity.optString(
+//                         "bank",
+//                         finalPaymentEntity.optString(
+//                                 "wallet",
+//                                 finalPaymentEntity.optString("vpa", "")
+//                         )
+//                 )
+//         );
+
+//         donationRepo.save(monthly);
+
+//         System.out.println(
+//                 "✅ Monthly debit saved | sub=" + subscriptionId +
+//                 " cycle=" + finalPaidCount
+//         );
+
+//         try {
+//             Donourentity decryptedParent =
+//                     donationService.findByIdDecrypt(parent.getId());
+
+//             byte[] pdf =
+//                     pdfReceiptService.generateMonthlyDebitReceipt(
+//                             decryptedParent,
+//                             finalPaymentId,
+//                             finalAmountPaid
+//                     );
+
+//             mailService.sendDonationReceiptWithAttachment(
+//                     decryptedParent.getEmail(),
+//                     decryptedParent.getFirstName() + " " + decryptedParent.getLastName(),
+//                     finalAmountPaid,
+//                     finalPaymentId,
+//                     pdf,
+//                     "Monthly_Donation_" + finalPaidCount + "_" + finalPaymentId + ".pdf"
+//             );
+
+//         } catch (Exception e) {
+//             e.printStackTrace();
+//         }
+//     });
+// }
+
+ // --------------------------------------------------------------------
+// WEBHOOK HANDLER
+// --------------------------------------------------------------------
+// @PostMapping("/razorpay-webhook")
+// public ResponseEntity<?> webhook(@RequestBody String payload,
+//                                  @RequestHeader("X-Razorpay-Signature") String signature) {
+
+//     System.out.println("====================== WEBHOOK RECEIVED ======================");
+//     System.out.println("Signature: " + signature);
+
+//     try {
+//         if (!Utils.verifyWebhookSignature(payload, signature, webhookSecret)) {
+//             System.out.println("❌ Invalid webhook signature");
+//             return ResponseEntity.status(400).body("Invalid signature");
+//         }
+
+//         JSONObject json = new JSONObject(payload);
+//         String event = json.optString("event");
+//         System.out.println("📣 EVENT = " + event);
+
+//         // ------------------------------------------------------------------
+//         // 1️⃣ ONE-TIME PAYMENT SAFETY (payment.captured)
+//         // ------------------------------------------------------------------
+//         if ("payment.captured".equals(event)) {
+
+//             JSONObject p = json.getJSONObject("payload")
+//                     .getJSONObject("payment")
+//                     .getJSONObject("entity");
+
+//             String orderId = p.optString("order_id", null);
+//             String paymentId = p.optString("id", null);
+
+//             if (orderId != null) {
+//                 donationRepo.findByOrderId(orderId).ifPresent(donor -> {
+//                     donor.setPaymentId(paymentId);
+//                     donor.setStatus("SUCCESS");
+//                     donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+//                     donationRepo.save(donor);
+//                     System.out.println("✅ payment.captured → updated donor");
+//                 });
+//             }
+//         }
+
+//         // ------------------------------------------------------------------
+//         // 2️⃣ MANDATE EVENTS (for e-mandate, if enabled in webhooks)
+//         // ------------------------------------------------------------------
+//         // Razorpay emits mandate events from the Mandates product. The exact
+//         // list depends on what you subscribed to (authorized/paused/revoked/etc).
+//         if (event.startsWith("mandate.")) {
+//             try {
+//                 JSONObject m = json.getJSONObject("payload")
+//                         .getJSONObject("mandate")
+//                         .getJSONObject("entity");
+
+//                 String subscriptionId = m.optString("subscription_id", null);
+//                 String mandateId      = m.optString("id", null);
+//                 String mandateStatus  = m.optString("status", "").toUpperCase();
+
+//                 System.out.println("🔔 mandate event → sub=" + subscriptionId +
+//                                    " mandate=" + mandateId +
+//                                    " status=" + mandateStatus);
+
+//                 if (subscriptionId != null) {
+//                     donationRepo.findBySubscriptionId(subscriptionId).ifPresent(donor -> {
+
+//                         donor.setRazorpayMandateId(mandateId);
+//                         donor.setMandateId(mandateId);            // your generic field
+//                         donor.setMandateStatus(mandateStatus);
+//                         donor.setStoredFromWebhook(true);
+
+//                         // Amount / frequency / dates – set if present
+//                         if (m.has("amount")) {
+//                             donor.setMandateAmount(m.getDouble("amount") / 100.0);
+//                         }
+//                         if (m.has("start_at")) {
+//                             LocalDateTime start = LocalDateTime.ofEpochSecond(
+//                                     m.getLong("start_at"), 0, ZoneId.of("Asia/Kolkata").getRules().getOffset(LocalDateTime.now())
+//                             );
+//                             donor.setMandateStartDate(start);
+//                         }
+//                         if (m.has("end_at")) {
+//                             long endAt = m.optLong("end_at", 0L);
+//                             if (endAt > 0) {
+//                                 LocalDateTime end = LocalDateTime.ofEpochSecond(
+//                                         endAt, 0, ZoneId.of("Asia/Kolkata").getRules().getOffset(LocalDateTime.now())
+//                                 );
+//                                 donor.setMandateEndDate(end);
+//                             }
+//                         }
+
+//                         // If mandate is authorized/active → mark subscription/donation success
+//                         if ("AUTHORIZED".equals(mandateStatus) ||
+//                                 "ACTIVE".equals(mandateStatus)) {
+//                             donor.setSubscriptionStatus("AUTHENTICATED");
+//                             donor.setStatus("SUCCESS");
+//                         } else if ("REVOKED".equals(mandateStatus) ||
+//                                    "PAUSED".equals(mandateStatus) ||
+//                                    "CANCELLED".equals(mandateStatus)) {
+//                             donor.setStatus("FAILED");
+//                         }
+
+//                         donationRepo.save(donor);
+//                         System.out.println("✅ mandate.* → updated donor " + donor.getId());
+
+//                         // Send confirmation mail ONLY when first time becomes authorized
+//                         if ("AUTHORIZED".equals(mandateStatus) &&
+//                                 Boolean.FALSE.equals(donor.getMandateMailSent())) {
+
+//                             try {
+//                                 Donourentity decrypted = donationService.findByIdDecrypt(donor.getId());
+
+//                                 byte[] pdf = pdfReceiptService.generateMandateConfirmation(decrypted);
+
+//                                 mailService.sendDonationReceiptWithAttachment(
+//                                         decrypted.getEmail(),
+//                                         decrypted.getFirstName() + " " + decrypted.getLastName(),
+//                                         decrypted.getMonthlyAmount(),
+//                                         mandateId,
+//                                         pdf,
+//                                         "Mandate_Confirmation_" + mandateId + ".pdf"
+//                                 );
+
+//                                 donor.setMandateMailSent(true);
+//                                 donationRepo.save(donor);
+
+//                                 System.out.println("📧 Mandate confirmation mail sent");
+//                             } catch (Exception e) {
+//                                 e.printStackTrace();
+//                             }
+//                         }
+//                     });
+//                 }
+//             } catch (Exception e) {
+//                 System.out.println("⚠ Error in mandate.* handler");
+//                 e.printStackTrace();
+//             }
+//         }
+
+//         // ------------------------------------------------------------------
+//         // 3️⃣ SUBSCRIPTION STATE EVENTS
+//         // ------------------------------------------------------------------
+//         if (event.startsWith("subscription.")) {
+
+//             // subscription.charged also has payment entity; handle below for debits
+//             JSONObject sub = json.getJSONObject("payload")
+//                     .getJSONObject("subscription")
+//                     .getJSONObject("entity");
+
+//             updateDonorFromSubscriptionEntity(sub, event);
+//         }
+
+//         // ------------------------------------------------------------------
+//         // 4️⃣ MONTHLY CHARGE (subscription.charged)
+//         // ------------------------------------------------------------------
+//         if ("subscription.charged".equals(event)) {
+
+//             JSONObject p = json.getJSONObject("payload")
+//                     .getJSONObject("payment")
+//                     .getJSONObject("entity");
+
+//             String subscriptionId = p.getString("subscription_id");
+//             String paymentId = p.getString("id");
+//             double amountPaid = p.getInt("amount") / 100.0;
+
+//             donationRepo.findBySubscriptionId(subscriptionId).ifPresent(parent -> {
+
+//                 Donourentity monthly = new Donourentity();
+
+//                 monthly.setFirstName(parent.getFirstName());
+//                 monthly.setLastName(parent.getLastName());
+//                 monthly.setEmail(parent.getEmail());
+//                 monthly.setMobile(parent.getMobile());
+
+//                 monthly.setSubscriptionId(subscriptionId);
+//                 monthly.setPaymentId(paymentId);
+//                 monthly.setAmount(amountPaid);
+//                 monthly.setStatus("SUCCESS");
+//                 monthly.setSubscriptionStatus("CHARGED");
+//                 monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+
+//                 donationRepo.save(monthly);
+
+//                 System.out.println("✅ Monthly debit saved (new row)");
+
+//                 try {
+//                     Donourentity decrypted = donationService.findByIdDecrypt(monthly.getId());
+
+//                     byte[] pdf = pdfReceiptService.generateMonthlyDebitReceipt(
+//                             decrypted, paymentId, amountPaid
+//                     );
+
+//                     mailService.sendDonationReceiptWithAttachment(
+//                             decrypted.getEmail(),
+//                             decrypted.getFirstName() + " " + decrypted.getLastName(),
+//                             amountPaid,
+//                             paymentId,
+//                             pdf,
+//                             "Monthly_Donation_" + paymentId + ".pdf"
+//                     );
+
+//                     System.out.println("📧 Monthly receipt sent");
+
+//                 } catch (Exception e) {
+//                     e.printStackTrace();
+//                 }
+//             });
+//         }
+
+//         return ResponseEntity.ok("OK");
+
+//     } catch (Exception e) {
+//         e.printStackTrace();
+//         return ResponseEntity.status(500).body("error");
+//     }
+// }
+
+
+  // Helper to sync subscription status from webhook into DB
+private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
+    try {
+        String subscriptionId = sub.optString("id", null);
+        String rzpStatus = sub.optString("status", "").toUpperCase();
+
+        System.out.println(event + " → subscriptionId=" + subscriptionId + ", status=" + rzpStatus);
+
+        if (subscriptionId == null) {
+            System.out.println("⚠ subscription entity has no id");
+            return;
+        }
+
+        Donourentity donor = donationRepo.findBySubscriptionId(subscriptionId).orElse(null);
+        if (donor == null) {
+            System.out.println("⚠ No donor found for subscriptionId=" + subscriptionId);
+            return;
+        }
+
+        donor.setSubscriptionStatus(rzpStatus);
+
+        if ("AUTHENTICATED".equals(rzpStatus) || "ACTIVE".equals(rzpStatus)) {
+            donor.setStatus("SUCCESS");
+        } else if ("HALTED".equals(rzpStatus) || "CANCELLED".equals(rzpStatus)
+                || "EXPIRED".equals(rzpStatus) || "COMPLETED".equals(rzpStatus)) {
+            donor.setStatus("FAILED");
+        }
+
+        donationRepo.save(donor);
+        System.out.println("✅ Subscription status updated from webhook for donorId=" + donor.getId());
+    } catch (Exception e) {
+        System.out.println("⚠ Error updating donor from subscription entity");
+        e.printStackTrace();
+    }
+}
+
+        
+}
+// --------------------------------------------------------------------------------------
+
 
 
 
