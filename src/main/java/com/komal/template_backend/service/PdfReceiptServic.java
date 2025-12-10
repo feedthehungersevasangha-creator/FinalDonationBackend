@@ -715,10 +715,10 @@ private String displayReceiptType(Donourentity d) {
             cs.newLineAtOffset(0, -16);
             cs.showText("Subscription ID: " + safe(d.getSubscriptionId()));
             cs.newLineAtOffset(0, -16);
-            // cs.showText("Mandate ID: " + safe(d.getRazorpayMandateId()));
-            // cs.newLineAtOffset(0, -16);
-            // cs.showText("Mandate Status: " + safe(d.getMandateStatus()));
-            // cs.newLineAtOffset(0, -16);
+            cs.showText("Mandate ID: " + safe(d.getRazorpayMandateId()));
+            cs.newLineAtOffset(0, -16);
+            cs.showText("Mandate Status: " + safe(d.getMandateStatus()));
+            cs.newLineAtOffset(0, -16);
             cs.showText("Monthly Amount: INR " + safe(String.valueOf(d.getMonthlyAmount())));
 
             cs.endText();
@@ -735,59 +735,154 @@ private String displayReceiptType(Donourentity d) {
     // =========================================
     // 3) MONTHLY DEBIT RECEIPT
     // =========================================
-    public byte[] generateMonthlyDebitReceipt(Donourentity d, String paymentId, double amount) throws Exception {
+    public byte[] generateMonthlyDebitReceipt(
+        Donourentity d,
+        String paymentId,
+        double amount
+) throws Exception {
 
-        try (PDDocument doc = new PDDocument()) {
+    try (PDDocument doc = new PDDocument()) {
 
-            PDType0Font font = loadUnicodeFont(doc);
-            PDPage page = new PDPage(PDRectangle.A4);
-            doc.addPage(page);
+        PDType0Font font = loadUnicodeFont(doc);
+        PDPage page = new PDPage(PDRectangle.A4);
+        doc.addPage(page);
 
-            PDPageContentStream cs = new PDPageContentStream(doc, page);
-            float margin = 40;
+        PDPageContentStream cs = new PDPageContentStream(doc, page);
+        float margin = 40;
 
-            float y = drawHeader(doc, cs, font, page.getMediaBox().getHeight() - margin);
+        float y = drawHeader(doc, cs, font, page.getMediaBox().getHeight() - margin);
 
-            // Title
-            cs.beginText();
-            cs.setFont(font, 16);
-            cs.newLineAtOffset(margin, y - 10);
-            // cs.showText("Monthly Donation Receipt");
-            cs.showText("Monthly e-Mandate Donation Receipt");
-            cs.endText();
+        // =====================================================
+        // TITLE
+        // =====================================================
+        cs.beginText();
+        cs.setFont(font, 16);
+        cs.newLineAtOffset(margin, y - 10);
+        cs.showText("Monthly Donation Receipt (e-Mandate)");
+        cs.endText();
 
-            y -= 70;
+        y -= 70;
 
-            // Details
-            cs.beginText();
-            cs.setFont(font, 12);
-            cs.newLineAtOffset(margin, y);
-            cs.showText("Donation Type: " + displayReceiptType(d));
-            cs.newLineAtOffset(0, -16);
-cs.showText("Receipt No: " + safe(d.getInvoiceNumber()));
-            cs.newLineAtOffset(0, -16);
-            cs.showText("Donor ID: " + safe(d.getId()));
-            cs.newLineAtOffset(0, -16);
-            cs.showText("Donor: " + safe(d.getFirstName()) + " " + safe(d.getLastName()));
-            cs.newLineAtOffset(0, -16);
-            cs.showText("Subscription ID: " + safe(d.getSubscriptionId()));
-            cs.newLineAtOffset(0, -16);
-            cs.showText("Payment ID: " + safe(paymentId));
-            cs.newLineAtOffset(0, -16);
-            cs.showText("Amount Debited: INR " + String.format("%.2f", amount));
-            cs.newLineAtOffset(0, -16);
-            cs.showText("Date: " + dtf.format(d.getDonationDate()));
+        // =====================================================
+        // RECEIPT DETAILS
+        // =====================================================
+        cs.beginText();
+        cs.setFont(font, 12);
+        cs.newLineAtOffset(margin, y);
 
-            cs.endText();
+        cs.showText("Donation Type: Monthly e-Mandate Debit");
+        cs.newLineAtOffset(0, -16);
 
-            drawFooterBox(cs, font, margin, page);
+        cs.showText("Record Type: SUBSCRIPTION_MONTHLY");
+        cs.newLineAtOffset(0, -16);
 
-            cs.close();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            doc.save(baos);
-            return baos.toByteArray();
-        }
+        cs.showText("Receipt No: " + safe(d.getInvoiceNumber()));
+        cs.newLineAtOffset(0, -16);
+
+        cs.showText("Donor Name: " +
+                safe(d.getFirstName()) + " " + safe(d.getLastName()));
+        cs.newLineAtOffset(0, -16);
+
+        cs.showText("Donor ID: " + safe(d.getId()));
+        cs.newLineAtOffset(0, -16);
+
+        cs.showText("Subscription ID: " + safe(d.getSubscriptionId()));
+        cs.newLineAtOffset(0, -16);
+
+        cs.showText("Payment ID: " + safe(paymentId));
+        cs.newLineAtOffset(0, -16);
+
+        // ✅ IMPORTANT: Cycle Count
+        cs.showText(
+                "Debit Cycle (Month No): " +
+                (d.getCycleCount() != null ? d.getCycleCount() : "-")
+        );
+        cs.newLineAtOffset(0, -16);
+
+        cs.showText("Amount Debited: INR " +
+                String.format("%.2f", amount));
+        cs.newLineAtOffset(0, -16);
+
+        cs.showText("Debit Date: " +
+                dtf.format(d.getDonationDate()));
+
+        cs.endText();
+
+        // =====================================================
+        // FOOTER / NOTE
+        // =====================================================
+        cs.beginText();
+        cs.setFont(font, 10);
+        cs.newLineAtOffset(margin, 120);
+        cs.showText(
+            "This receipt confirms a successful monthly auto-debit "
+          + "authorized under an e-Mandate. No signature required."
+        );
+        cs.endText();
+
+        drawFooterBox(cs, font, margin, page);
+
+        cs.close();
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        doc.save(baos);
+        return baos.toByteArray();
     }
+}
+
+//     public byte[] generateMonthlyDebitReceipt(Donourentity d, String paymentId, double amount) throws Exception {
+
+//         try (PDDocument doc = new PDDocument()) {
+
+//             PDType0Font font = loadUnicodeFont(doc);
+//             PDPage page = new PDPage(PDRectangle.A4);
+//             doc.addPage(page);
+
+//             PDPageContentStream cs = new PDPageContentStream(doc, page);
+//             float margin = 40;
+
+//             float y = drawHeader(doc, cs, font, page.getMediaBox().getHeight() - margin);
+
+//             // Title
+//             cs.beginText();
+//             cs.setFont(font, 16);
+//             cs.newLineAtOffset(margin, y - 10);
+//             // cs.showText("Monthly Donation Receipt");
+//             cs.showText("Monthly e-Mandate Donation Receipt");
+//             cs.endText();
+
+//             y -= 70;
+
+//             // Details
+//             cs.beginText();
+//             cs.setFont(font, 12);
+//             cs.newLineAtOffset(margin, y);
+//             cs.showText("Donation Type: " + displayReceiptType(d));
+//             cs.newLineAtOffset(0, -16);
+// cs.showText("Receipt No: " + safe(d.getInvoiceNumber()));
+//             cs.newLineAtOffset(0, -16);
+//             cs.showText("Donor ID: " + safe(d.getId()));
+//             cs.newLineAtOffset(0, -16);
+//             cs.showText("Donor: " + safe(d.getFirstName()) + " " + safe(d.getLastName()));
+//             cs.newLineAtOffset(0, -16);
+//             cs.showText("Subscription ID: " + safe(d.getSubscriptionId()));
+//             cs.newLineAtOffset(0, -16);
+//             cs.showText("Payment ID: " + safe(paymentId));
+//             cs.newLineAtOffset(0, -16);
+//             cs.showText("Amount Debited: INR " + String.format("%.2f", amount));
+//             cs.newLineAtOffset(0, -16);
+//             cs.showText("Date: " + dtf.format(d.getDonationDate()));
+
+//             cs.endText();
+
+//             drawFooterBox(cs, font, margin, page);
+
+//             cs.close();
+//             ByteArrayOutputStream baos = new ByteArrayOutputStream();
+//             doc.save(baos);
+//             return baos.toByteArray();
+//         }
+//     }
 
     private String safe(String v) {
         return v == null ? "-" : v;
