@@ -1637,8 +1637,8 @@ private PdfReceiptServic pdfReceiptService;
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "status", status,
-                    "amount", amount / 100.0
-                    "donorId", donorId   // ✅ THIS WAS MISSING
+                    "amount", amount / 100.0,
+                    "donorId", donorId  , // ✅ THIS WAS MISSING
             ));
         } catch (Exception e) {
             e.printStackTrace();
@@ -2724,6 +2724,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
 
         
 }
+
 
 
 
