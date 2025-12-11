@@ -189,6 +189,12 @@ public interface DonationRepo extends MongoRepository<Donourentity, String> {
     @Query(value = "{ 'subscriptionId': { $ne: null }, " +
                    "  'subscriptionStatus': { $nin: ['CANCELLED','COMPLETED','EXPIRED'] } }")
     List<Donourentity> findSubscriptionsForSync();
+    
+@Query("SELECT d FROM Donourentity d WHERE d.createdAt BETWEEN :from AND :to")
+List<Donourentity> findByDateRange(
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to
+);
 
     // =================================================
     // DASHBOARD COUNTS (FINAL – USE RECORD TYPE)
