@@ -1703,35 +1703,35 @@ private PdfReceiptServic pdfReceiptService;
         }
     }
 
-    // private long getNextStartDate(int startDay) {
-    //     LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
-    //     LocalDateTime next;
+    private long getNextStartDate(int startDay) {
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+        LocalDateTime next;
 
-    //     int today = now.getDayOfMonth();
-    //     if (today < startDay) {
-    //         next = now.withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
-    //     } else {
-    //         next = now.plusMonths(1).withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
-    //     }
+        int today = now.getDayOfMonth();
+        if (today < startDay) {
+            next = now.withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
+        } else {
+            next = now.plusMonths(1).withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
+        }
 
-    //     return next.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
-    // }
-private long getNextStartDate(int startDay) {
+        return next.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
+    }
+// private long getNextStartDate(int startDay) {
 
-    LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+//     LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
 
-    // ✅ ALWAYS move to NEXT month
-    LocalDateTime nextMonth =
-            now.plusMonths(1)
-               .withDayOfMonth(Math.min(startDay,
-                       now.plusMonths(1).toLocalDate().lengthOfMonth()))
-               .withHour(0)
-               .withMinute(0)
-               .withSecond(0)
-               .withNano(0);
+//     // ✅ ALWAYS move to NEXT month
+//     LocalDateTime nextMonth =
+//             now.plusMonths(1)
+//                .withDayOfMonth(Math.min(startDay,
+//                        now.plusMonths(1).toLocalDate().lengthOfMonth()))
+//                .withHour(0)
+//                .withMinute(0)
+//                .withSecond(0)
+//                .withNano(0);
 
-    return nextMonth.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
-}
+//     return nextMonth.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
+// }
 
   // --------------------------------------------------------------------
 // SUBSCRIPTION CREATE  (E-MANDATE)
@@ -2492,6 +2492,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
