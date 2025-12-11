@@ -545,6 +545,84 @@ private LocalDateTime parseDate(String date) {
             .toLocalDateTime();
 }
  
+public Map<String, Object> getDonationCounts(String fromDate, String toDate) {
+
+    List<Donourentity> data;
+
+    if (fromDate != null && toDate != null && !fromDate.isBlank()) {
+        LocalDateTime from = LocalDateTime.parse(fromDate);
+        LocalDateTime to = LocalDateTime.parse(toDate);
+        data = donationRepo.findByDateRange(from, to);
+    } else {
+        data = donationRepo.findAll();
+    }
+
+    int oneTimeSuccess = 0;
+    int oneTimeFailed = 0;
+
+    int subSuccess = 0;
+    int subFailed = 0;
+
+    int monthlyDebits = 0;
+    int totalAmount = 0;
+
+    for (Donourentity d : data) {
+
+        // -------------------------------
+        // ONE TIME
+        // -------------------------------
+        if ("onetime".equalsIgnoreCase(d.getFrequency())) {
+
+            if (d.getPaymentId() != null && d.getOrderId() != null
+                    && "SUCCESS".equalsIgnoreCase(d.getStatus())) {
+
+                oneTimeSuccess++;
+                totalAmount += d.getAmount();
+            } else {
+                oneTimeFailed++;
+            }
+
+            continue;
+        }
+
+        // -------------------------------
+        // SUBSCRIPTION (MANDATE)
+        // -------------------------------
+        if ("monthly".equalsIgnoreCase(d.getFrequency())) {
+
+            String subStatus = d.getSubscriptionStatus();
+            if (subStatus == null) subStatus = "";
+
+            if (subStatus.equals("AUTHORIZED") ||
+                subStatus.equals("AUTHENTICATED") ||
+                subStatus.equals("SUCCESS")) {
+
+                subSuccess++;
+            } else if (!subStatus.isEmpty()) {
+                subFailed++;
+            }
+
+            // ---------------------------
+            // MONTHLY AUTO DEBIT SUCCESS
+            // ---------------------------
+            if (d.getPaymentId() != null) {
+                monthlyDebits++;
+                totalAmount += d.getAmount();
+            }
+        }
+    }
+
+    return Map.of(
+            "onetimeSuccess", oneTimeSuccess,
+            "onetimeFailed", oneTimeFailed,
+
+            "subscriptionSuccess", subSuccess,
+            "subscriptionFailed", subFailed,
+
+            "monthlyDebits", monthlyDebits,
+            "totalAmount", totalAmount
+    );
+}
 
 }
 
