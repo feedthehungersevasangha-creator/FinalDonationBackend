@@ -179,6 +179,8 @@ public interface DonationRepo extends MongoRepository<Donourentity, String> {
     Optional<Donourentity> findByOrderId(String orderId);
 
     Optional<Donourentity> findBySubscriptionId(String subscriptionId);
+     long countByStatus(String status);              // SUCCESS, FAILED
+    long countByFrequency(String frequency);  
 
     Optional<Donourentity> findTopBySubscriptionIdOrderByDonationDateAsc(String subscriptionId);
 
