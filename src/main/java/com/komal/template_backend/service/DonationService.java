@@ -544,7 +544,29 @@ private LocalDateTime parseDate(String date) {
             .atStartOfDay(ZoneId.of("Asia/Kolkata"))
             .toLocalDateTime();
 }
- 
+ public Map<String, Object> getOverallCounts() {
+    System.out.println("🔥 Fetching overall donation counts...");
+
+    long total = donationRepo.count();
+    long oneTime = donationRepo.countByRecordTypeAndStatus("ONE_TIME", "SUCCESS");
+    long subscription = donationRepo.countByRecordTypeAndMandateStatus("SUBSCRIPTION_PARENT", "ACTIVE")
+            + donationRepo.countByRecordTypeAndStatus("SUBSCRIPTION_MONTHLY", "SUCCESS");
+    long failed = donationRepo.countByStatus("FAILED");
+
+    Map<String, Object> result = new HashMap<>();
+    result.put("total", total);
+    result.put("oneTime", oneTime);   // FIXED CASE
+    result.put("subscription", subscription);
+    result.put("failed", failed);
+
+    System.out.println("📊 TOTAL = " + total);
+    System.out.println("📊 ONETIME = " + oneTime);
+    System.out.println("📊 SUBSCRIPTION = " + subscription);
+    System.out.println("📊 FAILED = " + failed);
+
+    return result;
+}
+
 public Map<String, Object> getCountsForRange(LocalDateTime from, LocalDateTime to) {
 
     System.out.println("---- getCounts() START ----");
