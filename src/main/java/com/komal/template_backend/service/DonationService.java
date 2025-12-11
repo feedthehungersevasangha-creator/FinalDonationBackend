@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.time.LocalDate;
-
+import java.util.Arrays;
 
 @Service
 public class DonationService {
@@ -544,18 +544,76 @@ private LocalDateTime parseDate(String date) {
             .atStartOfDay(ZoneId.of("Asia/Kolkata"))
             .toLocalDateTime();
 }
- public Map<String, Object> getOverallCounts() {
-    System.out.println("🔥 Fetching overall donation counts...");
 
-    long total = donationRepo.count();
-    long oneTime = donationRepo.countByRecordTypeAndStatus("ONE_TIME", "SUCCESS");
-    long subscription = donationRepo.countByRecordTypeAndMandateStatus("SUBSCRIPTION_PARENT", "ACTIVE")
-            + donationRepo.countByRecordTypeAndStatus("SUBSCRIPTION_MONTHLY", "SUCCESS");
-    long failed = donationRepo.countByStatus("FAILED");
+}
+public Map<String, Object> getOverallCounts() {
+    System.out.println("🔥 Fetching overall donation counts (scanning all records)...");
+
+    List<Donourentity> all = donationRepo.findAll();
+    System.out.println("Total records in DB = " + all.size());
+
+    int total = all.size();
+    int oneTime = 0;
+    int subscription = 0;
+    int failed = 0;
+
+    for (Donourentity d : all) {
+        // debug per-record (optional, remove in prod)
+        System.out.println("Record: id=" + d.getId()
+            + " freq=" + d.getFrequency()
+            + " paymentId=" + d.getPaymentId()
+            + " orderId=" + d.getOrderId()
+            + " status=" + d.getStatus()
+            + " subStatus=" + d.getSubscriptionStatus()
+            + " mandateStatus=" + d.getMandateStatus());
+
+        // --- ONE-TIME rule
+        // treat frequency "onetime" as one-time record
+        if ("onetime".equalsIgnoreCase(d.getFrequency())
+            || "ONE_TIME".equalsIgnoreCase(d.getReceiptType())) {
+
+            if (d.getPaymentId() != null && d.getOrderId() != null
+                && "SUCCESS".equalsIgnoreCase(d.getStatus())) {
+                oneTime++;
+            } else {
+                // if not success or missing payment identifiers, count as failed
+                failed++;
+            }
+        }
+        // --- MONTHLY / SUBSCRIPTION rules
+        else if ("monthly".equalsIgnoreCase(d.getFrequency())
+                 || "E-Mandate".equalsIgnoreCase(d.getPaymentMode())
+                 || d.getSubscriptionId() != null
+                 || "SUBSCRIPTION_PARENT".equalsIgnoreCase(d.getReceiptType())
+                 || "SUBSCRIPTION_MONTHLY".equalsIgnoreCase(d.getReceiptType())) {
+
+            // Count active/authenticated subscription parents and successful monthly payments
+            // If this record represents a subscription parent (mandate) and mandate is AUTHORIZED/AUTHENTICATED/ACTIVE
+            boolean isParentAuthorized = d.getMandateStatus() != null &&
+                    Arrays.asList("AUTHORIZED", "AUTHENTICATED", "ACTIVE").contains(d.getMandateStatus().toUpperCase());
+
+            boolean isSubscriptionOk = d.getSubscriptionStatus() != null &&
+                    Arrays.asList("AUTHORIZED", "AUTHENTICATED", "ACTIVE").contains(d.getSubscriptionStatus().toUpperCase());
+
+            // Monthly debit (record for monthly payment) — treat as subscription if payment succeeded
+            boolean isMonthlyDebitSuccess = d.getPaymentId() != null && "SUCCESS".equalsIgnoreCase(d.getStatus());
+
+            if (isParentAuthorized || isSubscriptionOk || isMonthlyDebitSuccess) {
+                subscription++;
+            } else {
+                failed++;
+            }
+        } else {
+            // Unknown frequency: apply simple fallback
+            if ("FAILED".equalsIgnoreCase(d.getStatus())) {
+                failed++;
+            }
+        }
+    }
 
     Map<String, Object> result = new HashMap<>();
     result.put("total", total);
-    result.put("onetime", oneTime);   // FIXED CASE
+    result.put("onetime", oneTime);
     result.put("subscription", subscription);
     result.put("failed", failed);
 
@@ -566,7 +624,6 @@ private LocalDateTime parseDate(String date) {
 
     return result;
 }
-
 public Map<String, Object> getCountsForRange(LocalDateTime from, LocalDateTime to) {
 
     System.out.println("---- getCounts() START ----");
