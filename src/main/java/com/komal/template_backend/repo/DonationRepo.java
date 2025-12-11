@@ -167,7 +167,7 @@ package com.komal.template_backend.repo;
 import com.komal.template_backend.model.Donourentity;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
-
+import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
