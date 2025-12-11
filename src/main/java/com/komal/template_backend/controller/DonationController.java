@@ -306,24 +306,18 @@ public ResponseEntity<?> getDonationCounts(
         @RequestParam String from,
         @RequestParam String to) {
 
-    try {
-        LocalDateTime f = LocalDateTime.parse(from);
-        LocalDateTime t = LocalDateTime.parse(to);
+    LocalDateTime start = LocalDate.parse(from).atStartOfDay();
+    LocalDateTime end = LocalDate.parse(to).atTime(23, 59, 59);
 
-        Map<String, Object> counts = donationService.getCounts(f, t);
+    Map<String, Object> counts = donationService.getCountsForRange(start, end);
 
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "counts", counts
-        ));
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500).body(Map.of(
-                "success", false,
-                "message", "Error calculating donation counts"
-        ));
-    }
+    Map<String, Object> response = new HashMap<>();
+    response.put("success", true);
+    response.put("counts", counts);
+
+    return ResponseEntity.ok(response);
 }
+
 
 }
 
