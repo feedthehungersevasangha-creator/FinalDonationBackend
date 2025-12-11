@@ -545,7 +545,7 @@ private LocalDateTime parseDate(String date) {
             .toLocalDateTime();
 }
 
-}
+
 public Map<String, Object> getOverallCounts() {
     System.out.println("🔥 Fetching overall donation counts (scanning all records)...");
 
