@@ -290,17 +290,36 @@ public class DonationController {
 //         );
 //     }
 // }
-     @GetMapping("/donation-counts")
-    public ResponseEntity<?> getDonationCounts() {
+    //  @GetMapping("/donation-counts")
+    // public ResponseEntity<?> getDonationCounts() {
 
-        Map<String, Object> counts =
-                dashboardService.getDashboardCounts();
+    //     Map<String, Object> counts =
+    //             dashboardService.getDashboardCounts();
+
+    //     return ResponseEntity.ok(Map.of(
+    //             "success", true,
+    //             "counts", counts
+    //     ));
+    // }
+    @GetMapping("/donation-counts")
+public ResponseEntity<?> getDonationCounts(
+        @RequestParam(required = false) String from,
+        @RequestParam(required = false) String to) {
+
+    try {
+        Map<String, Object> counts = donationService.getDonationCounts(from, to);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "counts", counts
         ));
+
+    } catch (Exception ex) {
+        return ResponseEntity.status(500)
+                .body(Map.of("success", false, "error", ex.getMessage()));
     }
+}
+
 
 
 
