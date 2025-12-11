@@ -337,29 +337,65 @@ public class DonationController {
 //             "counts", counts
 //     ));
 // }
+// @GetMapping("/donation-counts")
+// public ResponseEntity<?> getDonationCounts(
+//         @RequestParam(required = false) String from,
+//         @RequestParam(required = false) String to) {
+
+//     try {
+//         Map<String, Object> counts;
+//         if (from != null && !from.isBlank() && to != null && !to.isBlank()) {
+//             LocalDateTime start = LocalDate.parse(from).atStartOfDay(ZoneId.of("Asia/Kolkata"));
+//             LocalDateTime end = LocalDate.parse(to).atTime(23, 59, 59).atZone(ZoneId.of("Asia/Kolkata")).toLocalDateTime();
+//             counts = donationService.getCountsForRange(start, end);
+//         } else {
+//             counts = donationService.getOverallCounts();
+//         }
+
+//         return ResponseEntity.ok(Map.of("success", true, "counts", counts));
+//     } catch (Exception e) {
+//         e.printStackTrace();
+//         return ResponseEntity.status(500).body(Map.of("success", false, "message", "Failed to fetch counts"));
+//     }
+// }
+
 @GetMapping("/donation-counts")
 public ResponseEntity<?> getDonationCounts(
         @RequestParam(required = false) String from,
         @RequestParam(required = false) String to) {
 
-    try {
-        Map<String, Object> counts;
-        if (from != null && !from.isBlank() && to != null && !to.isBlank()) {
-            LocalDateTime start = LocalDate.parse(from).atStartOfDay(ZoneId.of("Asia/Kolkata"));
-            LocalDateTime end = LocalDate.parse(to).atTime(23, 59, 59).atZone(ZoneId.of("Asia/Kolkata")).toLocalDateTime();
-            counts = donationService.getCountsForRange(start, end);
-        } else {
-            counts = donationService.getOverallCounts();
-        }
+    Map<String, Object> counts;
 
-        return ResponseEntity.ok(Map.of("success", true, "counts", counts));
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500).body(Map.of("success", false, "message", "Failed to fetch counts"));
+    // --- If NO DATES → return overall counts ---
+    if (from == null || from.isBlank() || to == null || to.isBlank()) {
+        counts = donationService.getOverallCounts();
+
+        return ResponseEntity.ok(
+                Map.of("success", true, "counts", counts)
+        );
     }
+
+    // --- Parse date range with IST timezone ---
+    LocalDateTime start =
+            LocalDate.parse(from)
+                     .atStartOfDay()
+                     .atZone(ZoneId.of("Asia/Kolkata"))
+                     .toLocalDateTime();
+
+    LocalDateTime end =
+            LocalDate.parse(to)
+                     .atTime(23, 59, 59)
+                     .atZone(ZoneId.of("Asia/Kolkata"))
+                     .toLocalDateTime();
+
+    counts = donationService.getCountsForRange(start, end);
+
+    return ResponseEntity.ok(
+            Map.of("success", true, "counts", counts)
+    );
 }
 
-
+    
 }
 
 
