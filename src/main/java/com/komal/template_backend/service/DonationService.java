@@ -551,9 +551,8 @@ public Map<String, Object> getCounts(LocalDateTime from, LocalDateTime to) {
     System.out.println("FROM = " + from);
     System.out.println("TO   = " + to);
 
-    List<Donourentity> list = donationRepo.findByDonationDateBetween(from, to);
-
-    System.out.println("Total records found = " + list.size());
+List<Donourentity> records = donationRepo.findAllByDonationDateBetween(from, to);
+    System.out.println("Total records found = " + records.size());
 
     int total = list.size();
     int oneTime = 0;
