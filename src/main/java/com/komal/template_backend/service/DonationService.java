@@ -545,7 +545,7 @@ private LocalDateTime parseDate(String date) {
             .toLocalDateTime();
 }
  
-public Map<String, Object> getCounts(LocalDateTime from, LocalDateTime to) {
+public Map<String, Object> getCountsForRange(LocalDateTime from, LocalDateTime to) {
 
     System.out.println("---- getCounts() START ----");
     System.out.println("FROM = " + from);
