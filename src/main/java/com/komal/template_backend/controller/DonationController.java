@@ -303,21 +303,28 @@ public class DonationController {
     // }
     @GetMapping("/donation-counts")
 public ResponseEntity<?> getDonationCounts(
-        @RequestParam(required = false) String from,
-        @RequestParam(required = false) String to) {
+        @RequestParam String from,
+        @RequestParam String to) {
 
     try {
-        Map<String, Object> counts = donationService.getDonationCounts(from, to);
+        LocalDateTime f = LocalDateTime.parse(from);
+        LocalDateTime t = LocalDateTime.parse(to);
+
+        Map<String, Object> counts = donationService.getCounts(f, t);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "counts", counts
         ));
-
-    } catch (Exception ex) {
-        return ResponseEntity.status(500)
-                .body(Map.of("success", false, "error", ex.getMessage()));
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Error calculating donation counts"
+        ));
     }
+}
+
 }
 
 
