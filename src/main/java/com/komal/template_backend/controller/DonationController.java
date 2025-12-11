@@ -301,21 +301,41 @@ public class DonationController {
     //             "counts", counts
     //     ));
     // }
-    @GetMapping("/donation-counts")
+//     @GetMapping("/donation-counts")
+// public ResponseEntity<?> getDonationCounts(
+//         @RequestParam String from,
+//         @RequestParam String to) {
+
+//     LocalDateTime start = LocalDate.parse(from).atStartOfDay();
+//     LocalDateTime end = LocalDate.parse(to).atTime(23, 59, 59);
+
+//     Map<String, Object> counts = donationService.getCountsForRange(start, end);
+
+//     Map<String, Object> response = new HashMap<>();
+//     response.put("success", true);
+//     response.put("counts", counts);
+
+//     return ResponseEntity.ok(response);
+// }
+@GetMapping("/donation-counts")
 public ResponseEntity<?> getDonationCounts(
-        @RequestParam String from,
-        @RequestParam String to) {
+        @RequestParam(required = false) String from,
+        @RequestParam(required = false) String to) {
 
-    LocalDateTime start = LocalDate.parse(from).atStartOfDay();
-    LocalDateTime end = LocalDate.parse(to).atTime(23, 59, 59);
+    Map<String, Object> counts;
 
-    Map<String, Object> counts = donationService.getCountsForRange(start, end);
+    if (from == null || to == null || from.isBlank() || to.isBlank()) {
+        counts = donationService.getOverallCounts();
+    } else {
+        LocalDateTime start = LocalDate.parse(from).atStartOfDay();
+        LocalDateTime end = LocalDate.parse(to).atTime(23, 59, 59);
+        counts = donationService.getCountsForRange(start, end);
+    }
 
-    Map<String, Object> response = new HashMap<>();
-    response.put("success", true);
-    response.put("counts", counts);
-
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(Map.of(
+            "success", true,
+            "counts", counts
+    ));
 }
 
 
