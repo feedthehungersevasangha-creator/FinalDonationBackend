@@ -545,84 +545,73 @@ private LocalDateTime parseDate(String date) {
             .toLocalDateTime();
 }
  
-public Map<String, Object> getDonationCounts(String fromDate, String toDate) {
+public Map<String, Object> getCounts(LocalDateTime from, LocalDateTime to) {
 
-    List<Donourentity> data;
+    System.out.println("---- getCounts() START ----");
+    System.out.println("FROM = " + from);
+    System.out.println("TO   = " + to);
 
-    if (fromDate != null && toDate != null && !fromDate.isBlank()) {
-        LocalDateTime from = LocalDateTime.parse(fromDate);
-        LocalDateTime to = LocalDateTime.parse(toDate);
-        data = donationRepo.findByDateRange(from, to);
-    } else {
-        data = donationRepo.findAll();
-    }
+    List<Donourentity> list = donationRepo.findByDonationDateBetween(from, to);
 
-    int oneTimeSuccess = 0;
-    int oneTimeFailed = 0;
+    System.out.println("Total records found = " + list.size());
 
-    int subSuccess = 0;
-    int subFailed = 0;
+    int total = list.size();
+    int oneTime = 0;
+    int subscription = 0;
+    int failed = 0;
 
-    int monthlyDebits = 0;
-    int totalAmount = 0;
+    for (Donourentity d : list) {
 
-    for (Donourentity d : data) {
+        // Debug each record
+        System.out.println("Checking Record -> ID: " + d.getId()
+                           + " | Frequency: " + d.getFrequency()
+                           + " | PaymentId: " + d.getPaymentId()
+                           + " | OrderId: " + d.getOrderId()
+                           + " | Status: " + d.getStatus()
+                           + " | SubStatus: " + d.getSubscriptionStatus()
+                           + " | MandateStatus: " + d.getMandateStatus());
 
-        // -------------------------------
-        // ONE TIME
-        // -------------------------------
+        // One-time success rule
         if ("onetime".equalsIgnoreCase(d.getFrequency())) {
 
-            if (d.getPaymentId() != null && d.getOrderId() != null
-                    && "SUCCESS".equalsIgnoreCase(d.getStatus())) {
+            if (d.getPaymentId() != null &&
+                d.getOrderId() != null &&
+                "SUCCESS".equalsIgnoreCase(d.getStatus())) {
 
-                oneTimeSuccess++;
-                totalAmount += d.getAmount();
+                oneTime++;
             } else {
-                oneTimeFailed++;
+                failed++;
             }
-
-            continue;
         }
 
-        // -------------------------------
-        // SUBSCRIPTION (MANDATE)
-        // -------------------------------
-        if ("monthly".equalsIgnoreCase(d.getFrequency())) {
+        // Subscription rule
+        else if ("monthly".equalsIgnoreCase(d.getFrequency())) {
 
-            String subStatus = d.getSubscriptionStatus();
-            if (subStatus == null) subStatus = "";
+            if ("AUTHORIZED".equalsIgnoreCase(d.getSubscriptionStatus()) ||
+                "AUTHENTICATED".equalsIgnoreCase(d.getSubscriptionStatus())) {
 
-            if (subStatus.equals("AUTHORIZED") ||
-                subStatus.equals("AUTHENTICATED") ||
-                subStatus.equals("SUCCESS")) {
-
-                subSuccess++;
-            } else if (!subStatus.isEmpty()) {
-                subFailed++;
-            }
-
-            // ---------------------------
-            // MONTHLY AUTO DEBIT SUCCESS
-            // ---------------------------
-            if (d.getPaymentId() != null) {
-                monthlyDebits++;
-                totalAmount += d.getAmount();
+                subscription++;
+            } else {
+                failed++;
             }
         }
     }
 
-    return Map.of(
-            "onetimeSuccess", oneTimeSuccess,
-            "onetimeFailed", oneTimeFailed,
+    Map<String, Object> result = new HashMap<>();
+    result.put("total", total);
+    result.put("onetime", oneTime);
+    result.put("subscription", subscription);
+    result.put("failed", failed);
 
-            "subscriptionSuccess", subSuccess,
-            "subscriptionFailed", subFailed,
+    System.out.println("---- FINAL COUNTS ----");
+    System.out.println("TOTAL = " + total);
+    System.out.println("ONETIME = " + oneTime);
+    System.out.println("SUBSCRIPTION = " + subscription);
+    System.out.println("FAILED = " + failed);
 
-            "monthlyDebits", monthlyDebits,
-            "totalAmount", totalAmount
-    );
+    return result;
 }
+
 
 }
 
