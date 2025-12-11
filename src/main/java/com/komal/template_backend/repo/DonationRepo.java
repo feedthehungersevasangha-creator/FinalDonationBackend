@@ -190,6 +190,9 @@ public interface DonationRepo extends MongoRepository<Donourentity, String> {
     List<Donourentity> findSubscriptionsForSync();
     
 
+@Query("{ 'donationDate': { $gte: ?0, $lte: ?1 } }")
+List<Donourentity> findAllByDonationDateBetween(LocalDateTime from, LocalDateTime to);
+
 
     // =================================================
     // DASHBOARD COUNTS (FINAL – USE RECORD TYPE)
