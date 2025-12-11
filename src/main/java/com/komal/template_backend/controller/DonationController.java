@@ -317,25 +317,46 @@ public class DonationController {
 
 //     return ResponseEntity.ok(response);
 // }
+// @GetMapping("/donation-counts")
+// public ResponseEntity<?> getDonationCounts(
+//         @RequestParam(required = false) String from,
+//         @RequestParam(required = false) String to) {
+
+//     Map<String, Object> counts;
+
+//     if (from == null || to == null || from.isBlank() || to.isBlank()) {
+//         counts = donationService.getOverallCounts();
+//     } else {
+//         LocalDateTime start = LocalDate.parse(from).atStartOfDay();
+//         LocalDateTime end = LocalDate.parse(to).atTime(23, 59, 59);
+//         counts = donationService.getCountsForRange(start, end);
+//     }
+
+//     return ResponseEntity.ok(Map.of(
+//             "success", true,
+//             "counts", counts
+//     ));
+// }
 @GetMapping("/donation-counts")
 public ResponseEntity<?> getDonationCounts(
         @RequestParam(required = false) String from,
         @RequestParam(required = false) String to) {
 
-    Map<String, Object> counts;
+    try {
+        Map<String, Object> counts;
+        if (from != null && !from.isBlank() && to != null && !to.isBlank()) {
+            LocalDateTime start = LocalDate.parse(from).atStartOfDay(ZoneId.of("Asia/Kolkata"));
+            LocalDateTime end = LocalDate.parse(to).atTime(23, 59, 59).atZone(ZoneId.of("Asia/Kolkata")).toLocalDateTime();
+            counts = donationService.getCountsForRange(start, end);
+        } else {
+            counts = donationService.getOverallCounts();
+        }
 
-    if (from == null || to == null || from.isBlank() || to.isBlank()) {
-        counts = donationService.getOverallCounts();
-    } else {
-        LocalDateTime start = LocalDate.parse(from).atStartOfDay();
-        LocalDateTime end = LocalDate.parse(to).atTime(23, 59, 59);
-        counts = donationService.getCountsForRange(start, end);
+        return ResponseEntity.ok(Map.of("success", true, "counts", counts));
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500).body(Map.of("success", false, "message", "Failed to fetch counts"));
     }
-
-    return ResponseEntity.ok(Map.of(
-            "success", true,
-            "counts", counts
-    ));
 }
 
 
