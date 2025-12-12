@@ -575,7 +575,7 @@ package com.komal.template_backend.model;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
 
 @Document(collection = "Donations")
@@ -621,10 +621,11 @@ public class Donourentity {
     private LocalDateTime donationDate=LocalDateTime.now() ;
     private String signature;
     // New fields for per-record dynamic key
+    @JsonIgnore
     private String encSalt;   // random salt per record
     private int encMonth;// donation month used for key derivation
+    @JsonIgnore
     private String encKey; // stores lightly obfuscated Base64 AES key
-
     // Mandate / subscription info (Razorpay)
     private String razorpayCustomerId;      // the donor/customer id from Razorpay
     private String razorpayPlanId;          // plan id (if any)
