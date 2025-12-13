@@ -2102,7 +2102,13 @@ if ("subscription.charged".equals(event)
         }
     });
 }
+        return ResponseEntity.ok("OK");
 
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500).body("ERROR");
+    }
+}
 // --------------------------------------------------------------------
 // WEBHOOK HANDLER -latest
 // --------------------------------------------------------------------
@@ -2583,6 +2589,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
