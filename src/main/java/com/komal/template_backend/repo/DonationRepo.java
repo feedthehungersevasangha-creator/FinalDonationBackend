@@ -177,8 +177,9 @@ public interface DonationRepo extends MongoRepository<Donourentity, String> {
     // BASIC LOOKUPS (USED BY WEBHOOKS & PAYMENTS)
     // =================================================
     Optional<Donourentity> findByOrderId(String orderId);
-
+    boolean existsByPaymentId(String paymentId);
     Optional<Donourentity> findBySubscriptionId(String subscriptionId);
+    
      long countByStatus(String status);              // SUCCESS, FAILED
     long countByFrequency(String frequency);  
 
