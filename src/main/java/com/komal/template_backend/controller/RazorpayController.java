@@ -1814,7 +1814,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
         donor.setStartDay(useStartDay);
 
         // e-mandate fields – initially pending
-        donor.setMandateStatus("PENDING");
+        donor.setMandateStatus("NOT_STARTED");
         donor.setMandateAmount((double) amount);
         donor.setMandateFrequency("MONTHLY");
 
@@ -2492,6 +2492,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
