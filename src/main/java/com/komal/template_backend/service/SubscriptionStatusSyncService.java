@@ -207,6 +207,10 @@ public class SubscriptionStatusSyncService {
                 if (rzpStatus.equals(localStatus)) continue;
 
                 donor.setSubscriptionStatus(rzpStatus);
+if ("CREATED".equals(rzpStatus)) {
+    donor.setMandateStatus("NOT_STARTED");
+    donor.setStatus("PENDING");
+}
 
                 // ==================================================
                 // ✅ MANDATE BANK APPROVAL (DERIVED)
