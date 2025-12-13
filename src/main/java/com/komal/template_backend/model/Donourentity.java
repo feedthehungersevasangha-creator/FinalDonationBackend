@@ -649,6 +649,42 @@ public class Donourentity {
 // ONE_TIME | SUBSCRIPTION_PARENT | SUBSCRIPTION_MONTHLY
     private Integer cycleCount;     // 1, 2, 3, ...
 private Boolean setupMailSent = false;
+  private String paymentStatus;     // SUCCESS / FAILED
+private LocalDateTime lastPaymentDate;
+private String lastPaymentId;
+private Integer paidCycles;
+  
+public String getPaymentStatus() {
+    return paymentStatus;
+}
+
+public void setPaymentStatus(String paymentStatus) {
+    this.paymentStatus = paymentStatus;
+}
+
+public LocalDateTime getLastPaymentDate() {
+    return lastPaymentDate;
+}
+
+public void setLastPaymentDate(LocalDateTime lastPaymentDate) {
+    this.lastPaymentDate = lastPaymentDate;
+}
+
+public String getLastPaymentId() {
+    return lastPaymentId;
+}
+
+public void setLastPaymentId(String lastPaymentId) {
+    this.lastPaymentId = lastPaymentId;
+}
+
+public Integer getPaidCycles() {
+    return paidCycles;
+}
+
+public void setPaidCycles(Integer paidCycles) {
+    this.paidCycles = paidCycles;
+}
 
 // --------------------
 // cycleCount
