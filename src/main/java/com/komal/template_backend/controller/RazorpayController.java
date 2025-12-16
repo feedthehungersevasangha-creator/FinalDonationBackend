@@ -1950,7 +1950,7 @@ if (("subscription.authenticated".equals(event)
                         donor.setSubscriptionStatus("AUTHENTICATED");
                         donor.setMandateStatus("USER_AUTHENTICATED"); // NOT AUTHORIZED
                         donor.setRecordType("SUBSCRIPTION_PARENT");
-                        donor.setStatus("SUCCESS");
+                        donor.setStatus("USER_AUTHENTICATED");
 
                         donationRepo.save(donor);
 
@@ -2719,6 +2719,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
