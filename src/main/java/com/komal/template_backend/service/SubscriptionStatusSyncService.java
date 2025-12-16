@@ -234,6 +234,26 @@
 //     }
 // }
 // ------------------------------------------------------------------------------------------------
+package com.komal.template_backend.service;
+
+import com.komal.template_backend.model.Donourentity;
+import com.komal.template_backend.repo.DonationRepo;
+import com.komal.template_backend.service.MailService;
+import com.komal.template_backend.service.PdfReceiptServic;
+import com.komal.template_backend.service.DonationService;
+import com.razorpay.RazorpayClient;
+import com.razorpay.Subscription;
+
+import org.json.JSONObject;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.List;
+
 @Service
 public class SubscriptionStatusSyncService {
 
@@ -252,8 +272,8 @@ public class SubscriptionStatusSyncService {
             DonationRepo donationRepo,
             MailService mailService,
             PdfReceiptServic pdfReceiptService,
-            DonationService donationService) {
-
+            DonationService donationService
+    ) {
         this.donationRepo = donationRepo;
         this.mailService = mailService;
         this.pdfReceiptService = pdfReceiptService;
@@ -262,45 +282,51 @@ public class SubscriptionStatusSyncService {
 
     // Runs every 10 minutes
     @Scheduled(fixedDelay = 10 * 60 * 1000)
-    public void syncSubscriptions() {
+    public void syncSubscriptionsFromRazorpay() {
+
+        List<Donourentity> donors = donationRepo.findSubscriptionsForSync();
+        if (donors.isEmpty()) return;
 
         try {
             RazorpayClient client = new RazorpayClient(keyId, keySecret);
-
-            List<Donourentity> donors = donationRepo.findSubscriptionsForSync();
 
             for (Donourentity donor : donors) {
 
                 if (donor.getSubscriptionId() == null) continue;
 
-                Subscription sub =
+                Subscription subscription =
                         client.subscriptions.fetch(donor.getSubscriptionId());
 
-                String status = sub.toJson().optString("status", "").toUpperCase();
+                JSONObject sub = subscription.toJson();
+                String rzpStatus =
+                        sub.optString("status", "UNKNOWN").toUpperCase();
 
-                if (status.equals(donor.getSubscriptionStatus())) continue;
-
-                donor.setSubscriptionStatus(status);
-
-                if ("AUTHENTICATED".equals(status)) {
-                    donor.setMandateStatus("USER_AUTHENTICATED");
+                if (rzpStatus.equals(donor.getSubscriptionStatus())) {
+                    continue;
                 }
 
-                if ("ACTIVE".equals(status)) {
+                donor.setSubscriptionStatus(rzpStatus);
+
+                if ("AUTHENTICATED".equals(rzpStatus)) {
+                    donor.setMandateStatus("USER_AUTHENTICATED");
+                    donor.setStatus("USER_AUTHENTICATED");
+                }
+
+                if ("ACTIVE".equals(rzpStatus)) {
                     donor.setMandateStatus("AUTHORIZED");
                     donor.setStatus("SUCCESS");
 
                     if (Boolean.FALSE.equals(donor.getMandateMailSent())) {
-                        Donourentity dec =
+                        Donourentity decrypted =
                                 donationService.findByIdDecrypt(donor.getId());
 
                         byte[] pdf =
-                                pdfReceiptService.generateMandateConfirmation(dec);
+                                pdfReceiptService.generateMandateConfirmation(decrypted);
 
                         mailService.sendDonationReceiptWithAttachment(
-                                dec.getEmail(),
-                                dec.getFirstName() + " " + dec.getLastName(),
-                                dec.getMonthlyAmount(),
+                                decrypted.getEmail(),
+                                decrypted.getFirstName() + " " + decrypted.getLastName(),
+                                decrypted.getMonthlyAmount(),
                                 donor.getSubscriptionId(),
                                 pdf,
                                 "Mandate_Approved_" + donor.getSubscriptionId() + ".pdf"
@@ -310,12 +336,12 @@ public class SubscriptionStatusSyncService {
                     }
                 }
 
-                if ("CANCELLED".equals(status)
-                        || "HALTED".equals(status)
-                        || "EXPIRED".equals(status)) {
+                if ("CANCELLED".equals(rzpStatus)
+                        || "HALTED".equals(rzpStatus)
+                        || "EXPIRED".equals(rzpStatus)) {
 
                     donor.setStatus("FAILED");
-                    donor.setMandateStatus("INACTIVE");
+                    donor.setMandateStatus("CANCELLED");
                 }
 
                 donationRepo.save(donor);
@@ -326,6 +352,7 @@ public class SubscriptionStatusSyncService {
         }
     }
 }
+
 
 
 
