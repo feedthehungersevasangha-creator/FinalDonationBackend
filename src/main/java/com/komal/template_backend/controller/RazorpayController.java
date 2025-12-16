@@ -2762,25 +2762,54 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
 
                     donationRepo.save(donor);
 
+                    // if (Boolean.FALSE.equals(donor.getMandateMailSent())) {
+                    //     Donourentity decrypted =
+                    //             donationService.findByIdDecrypt(donor.getId());
+
+                    //     byte[] pdf =
+                    //             pdfReceiptService.generateMandateConfirmation(decrypted);
+
+                    //     mailService.sendDonationReceiptWithAttachment(
+                    //             decrypted.getEmail(),
+                    //             decrypted.getFirstName() + " " + decrypted.getLastName(),
+                    //             decrypted.getMonthlyAmount(),
+                    //             mandateId,
+                    //             pdf,
+                    //             "Mandate_Approved_" + mandateId + ".pdf"
+                    //     );
+
+                    //     donor.setMandateMailSent(true);
+                    //     donationRepo.save(donor);
+                    // }
                     if (Boolean.FALSE.equals(donor.getMandateMailSent())) {
-                        Donourentity decrypted =
-                                donationService.findByIdDecrypt(donor.getId());
 
-                        byte[] pdf =
-                                pdfReceiptService.generateMandateConfirmation(decrypted);
+    try {
+        Donourentity decrypted =
+                donationService.findByIdDecrypt(donor.getId());
 
-                        mailService.sendDonationReceiptWithAttachment(
-                                decrypted.getEmail(),
-                                decrypted.getFirstName() + " " + decrypted.getLastName(),
-                                decrypted.getMonthlyAmount(),
-                                mandateId,
-                                pdf,
-                                "Mandate_Approved_" + mandateId + ".pdf"
-                        );
+        byte[] pdf =
+                pdfReceiptService.generateMandateConfirmation(decrypted);
 
-                        donor.setMandateMailSent(true);
-                        donationRepo.save(donor);
-                    }
+        mailService.sendDonationReceiptWithAttachment(
+                decrypted.getEmail(),
+                decrypted.getFirstName() + " " + decrypted.getLastName(),
+                decrypted.getMonthlyAmount(),
+                mandateId,
+                pdf,
+                "Mandate_Approved_" + mandateId + ".pdf"
+        );
+
+        donor.setMandateMailSent(true);
+        donationRepo.save(donor);
+
+    } catch (Exception e) {
+        System.out.println(
+            "❌ Mandate approval mail failed for donorId=" + donor.getId()
+        );
+        e.printStackTrace();
+    }
+}
+
                 });
             }
 
@@ -2923,6 +2952,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
