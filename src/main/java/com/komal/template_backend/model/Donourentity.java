@@ -653,7 +653,18 @@ private Boolean setupMailSent = false;
 private LocalDateTime lastPaymentDate;
 private String lastPaymentId;
 private Integer paidCycles;
+    private Boolean cancelMailSent = false;
+    public Boolean getCancelMailSent() {
+    return cancelMailSent;
+}
+
+public void setCancelMailSent(Boolean cancelMailSent) {
+    this.cancelMailSent = cancelMailSent;
+}
+
  // --------------------
+    
+    
 // setupMailSent
 // --------------------
 public Boolean getSetupMailSent() {
