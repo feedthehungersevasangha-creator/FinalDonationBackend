@@ -2714,8 +2714,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
             // =====================================================
             // 1️⃣ USER AUTHENTICATED (BANK NOT YET APPROVED)
             // =====================================================
-            if ((event.equals("subscription.authenticated")
-                    || event.equals("subscription.activated"))
+            if (event.equals("subscription.authenticated")
                     && subscription != null) {
 
                 String subId = subscription.optString("id");
@@ -2747,7 +2746,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
             // =====================================================
             // 2️⃣ BANK APPROVED MANDATE (FINAL)
             // =====================================================
-            if (event.equals("mandate.authorized") && mandate != null) {
+            if ((event.equals("mandate.authorized")|| event.equals("subscription.activated")) && mandate != null) {
 
                 String mandateId = mandate.optString("id");
                 String subId = mandate.optString("subscription_id");
@@ -2952,6 +2951,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
