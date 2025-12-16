@@ -653,7 +653,17 @@ private Boolean setupMailSent = false;
 private LocalDateTime lastPaymentDate;
 private String lastPaymentId;
 private Integer paidCycles;
-  
+ // --------------------
+// setupMailSent
+// --------------------
+public Boolean getSetupMailSent() {
+    return setupMailSent;
+}
+
+public void setSetupMailSent(Boolean setupMailSent) {
+    this.setupMailSent = setupMailSent;
+}
+ 
 public String getPaymentStatus() {
     return paymentStatus;
 }
