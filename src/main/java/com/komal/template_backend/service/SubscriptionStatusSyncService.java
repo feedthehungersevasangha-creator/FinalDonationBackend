@@ -310,6 +310,18 @@ public class SubscriptionStatusSyncService {
                 if ("AUTHENTICATED".equals(rzpStatus)) {
                     donor.setMandateStatus("USER_AUTHENTICATED");
                     donor.setStatus("USER_AUTHENTICATED");
+                        if (Boolean.FALSE.equals(donor.getSetupMailSent())) {
+                        mailService.sendMail(
+                                donor.getEmail(),
+                                "Mandate authentication successful",
+                                "Dear " + donor.getFirstName() + ",\n\n"
+                              + "You have successfully authenticated the mandate.\n"
+                              + "Bank approval may take 24–48 hours.\n\n"
+                              + "Regards,\nFeed The Hunger Seva Sangha"
+                        );
+                        donor.setSetupMailSent(true);
+                        donationRepo.save(donor);
+                    }
                 }
 
                 if ("ACTIVE".equals(rzpStatus)) {
