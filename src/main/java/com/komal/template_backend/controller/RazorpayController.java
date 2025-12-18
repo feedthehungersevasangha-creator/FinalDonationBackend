@@ -2910,6 +2910,103 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
         }
     }
 
+@PostMapping("/emandate/create-order")
+public ResponseEntity<?> createMandateOrder(@RequestBody Donourentity donor) {
+    try {
+        RazorpayClient client = new RazorpayClient(keyId, keySecret);
+
+        JSONObject options = new JSONObject();
+        options.put("amount", 100); // ₹1 mandate auth (REQUIRED by banks)
+        options.put("currency", "INR");
+        options.put("receipt", "mandate_" + System.currentTimeMillis());
+        options.put("payment_capture", 1);
+
+        Order order = client.orders.create(options);
+
+        donor.setOrderId(order.get("id"));
+        donor.setStatus("MANDATE_INITIATED");
+        donor.setRecordType("MANDATE_ONLY");
+        donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+
+        Donourentity saved = donationRepo.save(donor);
+
+        return ResponseEntity.ok(Map.of(
+                "orderId", order.get("id"),
+                "keyId", keyId,
+                "amount", 100,
+                "donorId", saved.getId()
+        ));
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500).body("Mandate order failed");
+    }
+}
+@PostMapping("/emandate/verify")
+public ResponseEntity<?> verifyMandate(@RequestBody Map<String, String> body) {
+    try {
+        String orderId = body.get("razorpay_order_id");
+        String paymentId = body.get("razorpay_payment_id");
+        String signature = body.get("razorpay_signature");
+
+        String payload = orderId + "|" + paymentId;
+        String expected = hmacSha256(payload, keySecret);
+
+        if (!expected.equals(signature)) {
+            return ResponseEntity.badRequest().body("Invalid signature");
+        }
+
+        RazorpayClient client = new RazorpayClient(keyId, keySecret);
+        com.razorpay.Payment payment = client.payments.fetch(paymentId);
+        JSONObject p = payment.toJson();
+
+        JSONObject token = p.getJSONObject("token"); // ⭐ REAL MANDATE OBJECT
+
+        Donourentity donor = donationRepo.findByOrderId(orderId)
+                .orElseThrow(() -> new RuntimeException("Donor not found"));
+
+        // ✅ UPDATE MANDATE DETAILS
+        donor.setMandateId(token.getString("id"));
+        donor.setMandateStatus(token.getString("status").toUpperCase()); // CONFIRMED
+        donor.setMandateFrequency(token.optString("frequency", "MONTHLY"));
+        donor.setMandateAmount(token.optInt("max_amount") / 100.0);
+        donor.setStatus("SUCCESS");
+
+        donationRepo.save(donor);
+
+        // ✅ SEND PDF + MAIL ONLY ONCE
+        if ("CONFIRMED".equalsIgnoreCase(token.getString("status"))
+                && Boolean.FALSE.equals(donor.getMandateMailSent())) {
+
+            Donourentity decrypted =
+                    donationService.findByIdDecrypt(donor.getId());
+
+            byte[] pdf =
+                    pdfReceiptService.generateMandateConfirmation(decrypted);
+
+            mailService.sendDonationReceiptWithAttachment(
+                    decrypted.getEmail(),
+                    decrypted.getFirstName() + " " + decrypted.getLastName(),
+                    decrypted.getMandateAmount(),
+                    donor.getMandateId(),
+                    pdf,
+                    "Mandate_Approved_" + donor.getMandateId() + ".pdf"
+            );
+
+            donor.setMandateMailSent(true);
+            donationRepo.save(donor);
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "mandateId", donor.getMandateId()
+        ));
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500).body("Verification failed");
+    }
+}
 
 
   // Helper to sync subscription status from webhook into DB
@@ -2951,6 +3048,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
