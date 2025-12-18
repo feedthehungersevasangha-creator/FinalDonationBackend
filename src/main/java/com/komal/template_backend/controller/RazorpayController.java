@@ -2942,40 +2942,153 @@ public ResponseEntity<?> createMandateOrder(@RequestBody Donourentity donor) {
         return ResponseEntity.status(500).body("Mandate order failed");
     }
 }
-@PostMapping("/emandate/verify")
+// @PostMapping("/emandate/verify")
+// public ResponseEntity<?> verifyMandate(@RequestBody Map<String, String> body) {
+//     try {
+//         String orderId = body.get("razorpay_order_id");
+//         String paymentId = body.get("razorpay_payment_id");
+//         String signature = body.get("razorpay_signature");
+
+//         String payload = orderId + "|" + paymentId;
+//         String expected = hmacSha256(payload, keySecret);
+
+//         if (!expected.equals(signature)) {
+//             return ResponseEntity.badRequest().body("Invalid signature");
+//         }
+
+//         RazorpayClient client = new RazorpayClient(keyId, keySecret);
+//         com.razorpay.Payment payment = client.payments.fetch(paymentId);
+//         JSONObject p = payment.toJson();
+
+//         JSONObject token = p.getJSONObject("token"); // ⭐ REAL MANDATE OBJECT
+
+//         Donourentity donor = donationRepo.findByOrderId(orderId)
+//                 .orElseThrow(() -> new RuntimeException("Donor not found"));
+
+//         // ✅ UPDATE MANDATE DETAILS
+//         donor.setMandateId(token.getString("id"));
+//         donor.setMandateStatus(token.getString("status").toUpperCase()); // CONFIRMED
+//         donor.setMandateFrequency(token.optString("frequency", "MONTHLY"));
+//         donor.setMandateAmount(token.optInt("max_amount") / 100.0);
+//         donor.setStatus("SUCCESS");
+
+//         donationRepo.save(donor);
+
+//         // ✅ SEND PDF + MAIL ONLY ONCE
+//         if ("CONFIRMED".equalsIgnoreCase(token.getString("status"))
+//                 && Boolean.FALSE.equals(donor.getMandateMailSent())) {
+
+//             Donourentity decrypted =
+//                     donationService.findByIdDecrypt(donor.getId());
+
+//             byte[] pdf =
+//                     pdfReceiptService.generateMandateConfirmation(decrypted);
+
+//             mailService.sendDonationReceiptWithAttachment(
+//                     decrypted.getEmail(),
+//                     decrypted.getFirstName() + " " + decrypted.getLastName(),
+//                     decrypted.getMandateAmount(),
+//                     donor.getMandateId(),
+//                     pdf,
+//                     "Mandate_Approved_" + donor.getMandateId() + ".pdf"
+//             );
+
+//             donor.setMandateMailSent(true);
+//             donationRepo.save(donor);
+//         }
+
+//         return ResponseEntity.ok(Map.of(
+//                 "success", true,
+//                 "mandateId", donor.getMandateId()
+//         ));
+
+//     } catch (Exception e) {
+//         e.printStackTrace();
+//         return ResponseEntity.status(500).body("Verification failed");
+//     }
+// }
+// --------------------------------------------------------------------------------
+    @PostMapping("/emandate/verify")
 public ResponseEntity<?> verifyMandate(@RequestBody Map<String, String> body) {
+
+    System.out.println("===== E-MANDATE VERIFY START =====");
+    System.out.println("Payload from frontend: " + body);
+
     try {
         String orderId = body.get("razorpay_order_id");
         String paymentId = body.get("razorpay_payment_id");
         String signature = body.get("razorpay_signature");
 
+        System.out.println("orderId    = " + orderId);
+        System.out.println("paymentId  = " + paymentId);
+        System.out.println("signature  = " + signature);
+
+        if (orderId == null || paymentId == null || signature == null) {
+            System.out.println("❌ Missing Razorpay params");
+            return ResponseEntity.badRequest().body("Missing payment parameters");
+        }
+
+        // ---------------------------------------------------
+        // SIGNATURE VERIFY
+        // ---------------------------------------------------
         String payload = orderId + "|" + paymentId;
         String expected = hmacSha256(payload, keySecret);
 
+        System.out.println("Expected signature = " + expected);
+
         if (!expected.equals(signature)) {
+            System.out.println("❌ SIGNATURE MISMATCH");
             return ResponseEntity.badRequest().body("Invalid signature");
         }
 
+        System.out.println("✅ Signature verified");
+
+        // ---------------------------------------------------
+        // FETCH PAYMENT FROM RAZORPAY
+        // ---------------------------------------------------
         RazorpayClient client = new RazorpayClient(keyId, keySecret);
         com.razorpay.Payment payment = client.payments.fetch(paymentId);
         JSONObject p = payment.toJson();
 
-        JSONObject token = p.getJSONObject("token"); // ⭐ REAL MANDATE OBJECT
+        System.out.println("Payment JSON = " + p);
 
+        // ---------------------------------------------------
+        // TOKEN (MANDATE) OBJECT
+        // ---------------------------------------------------
+        JSONObject token = p.optJSONObject("token");
+
+        if (token == null) {
+            System.out.println("❌ TOKEN OBJECT NOT FOUND");
+            return ResponseEntity.badRequest().body("Mandate token not created");
+        }
+
+        System.out.println("Mandate token = " + token);
+
+        // ---------------------------------------------------
+        // FETCH DONOR
+        // ---------------------------------------------------
         Donourentity donor = donationRepo.findByOrderId(orderId)
-                .orElseThrow(() -> new RuntimeException("Donor not found"));
+                .orElseThrow(() -> new RuntimeException("Donor not found for orderId"));
 
-        // ✅ UPDATE MANDATE DETAILS
-        donor.setMandateId(token.getString("id"));
-        donor.setMandateStatus(token.getString("status").toUpperCase()); // CONFIRMED
+        // ---------------------------------------------------
+        // SAVE MANDATE DETAILS (VERY IMPORTANT)
+        // ---------------------------------------------------
+        donor.setMandateId(token.getString("id"));                 // ⭐ TOKEN ID
+        donor.setRazorpayMandateId(token.getString("id"));         // ⭐ SAVE ALSO HERE
+        donor.setMandateStatus(token.optString("status").toUpperCase());
         donor.setMandateFrequency(token.optString("frequency", "MONTHLY"));
-        donor.setMandateAmount(token.optInt("max_amount") / 100.0);
-        donor.setStatus("SUCCESS");
+        donor.setMandateAmount(token.optInt("max_amount", 0) / 100.0);
+        donor.setPaymentId(paymentId);
+        donor.setStatus("MANDATE_CREATED");
 
         donationRepo.save(donor);
 
-        // ✅ SEND PDF + MAIL ONLY ONCE
-        if ("CONFIRMED".equalsIgnoreCase(token.getString("status"))
+        System.out.println("✅ Mandate saved in DB for donor=" + donor.getId());
+
+        // ---------------------------------------------------
+        // SEND MAIL + PDF ONLY AFTER CONFIRMED
+        // ---------------------------------------------------
+        if ("CONFIRMED".equalsIgnoreCase(token.optString("status"))
                 && Boolean.FALSE.equals(donor.getMandateMailSent())) {
 
             Donourentity decrypted =
@@ -2994,15 +3107,22 @@ public ResponseEntity<?> verifyMandate(@RequestBody Map<String, String> body) {
             );
 
             donor.setMandateMailSent(true);
+            donor.setStatus("SUCCESS");
             donationRepo.save(donor);
+
+            System.out.println("📧 Mandate confirmation mail sent");
         }
+
+        System.out.println("===== E-MANDATE VERIFY SUCCESS =====");
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
-                "mandateId", donor.getMandateId()
+                "mandateId", donor.getMandateId(),
+                "mandateStatus", donor.getMandateStatus()
         ));
 
     } catch (Exception e) {
+        System.out.println("❌ E-MANDATE VERIFY FAILED");
         e.printStackTrace();
         return ResponseEntity.status(500).body("Verification failed");
     }
@@ -3048,6 +3168,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
