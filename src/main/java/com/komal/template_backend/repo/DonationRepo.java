@@ -196,7 +196,13 @@ public interface DonationRepo extends MongoRepository<Donourentity, String> {
 @Query("{ 'donationDate': { $gte: ?0, $lte: ?1 } }")
 List<Donourentity> findAllByDonationDateBetween(LocalDateTime from, LocalDateTime to);
 
-
+@Query("""
+        {
+          "recordType": "MANDATE_ONLY",
+          "mandateStatus": { "$ne": "AUTHORIZED" }
+        }
+    """)
+    List<Donourentity> findPendingPureMandates();
     // =================================================
     // DASHBOARD COUNTS (FINAL – USE RECORD TYPE)
     // =================================================
