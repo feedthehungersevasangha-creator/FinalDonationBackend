@@ -3191,6 +3191,11 @@ import javax.crypto.spec.SecretKeySpec;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+
+
 
 @RestController
 @RequestMapping("/api/payment")
@@ -3215,6 +3220,8 @@ public class RazorpayController {
     // private pdfReceiptServiceee pdfReceiptServicee;
     @Autowired
 private PdfReceiptServic pdfReceiptService;
+@Autowired
+private ObjectMapper objectMapper;
 
 
 
@@ -3453,88 +3460,98 @@ private long getNextStartDate(int startDay) {
 @PostMapping("/create-subscription")
 public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
 
-    System.out.println("\n================ 🔵 CREATE SUBSCRIPTION START ================");
-    System.out.println("📥 Incoming: " + req);
+    System.out.println("\n================ CREATE SUBSCRIPTION (JACKSON) ================");
+    System.out.println("REQ = " + req);
 
     try {
         String donorId = String.valueOf(req.get("donorId"));
-        int amount = parseIntSafe(req.get("amount"), 0);
-        int startDay = parseIntSafe(req.get("starterAmount"), 10);
+        int amount = Integer.parseInt(String.valueOf(req.get("amount")));
+        int startDay = Integer.parseInt(String.valueOf(req.getOrDefault("starterAmount", 10)));
 
         if (amount <= 0) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", "Invalid amount"));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid amount"));
         }
-
-        if (startDay < 1 || startDay > 28) startDay = 10;
 
         Donourentity donor = donationRepo.findById(donorId)
                 .orElseThrow(() -> new RuntimeException("Donor not found"));
 
         RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
-        // ---------------- PLAN ----------------
-        JSONObject planItem = new JSONObject();
-        planItem.put("name", "Monthly Donation");
-        planItem.put("amount", amount * 100);
-        planItem.put("currency", "INR");
-
-        JSONObject planReq = new JSONObject();
+        // ------------------------------------------------
+        // 1️⃣ CREATE PLAN
+        // ------------------------------------------------
+        ObjectNode planReq = objectMapper.createObjectNode();
         planReq.put("period", "monthly");
         planReq.put("interval", 1);
-        planReq.put("item", planItem);
 
-        System.out.println("📦 Plan payload:\n" + planReq.toString(2));
-        Plan plan = client.plans.create(planReq);
+        ObjectNode item = objectMapper.createObjectNode();
+        item.put("name", "Monthly Donation");
+        item.put("amount", amount * 100);
+        item.put("currency", "INR");
+
+        planReq.set("item", item);
+
+        System.out.println("📦 PLAN JSON:\n" + planReq.toPrettyString());
+        Plan plan = client.plans.create(new com.razorpay.JSONObject(planReq.toString()));
 
         donor.setPlanId(plan.get("id"));
         donationRepo.save(donor);
 
-        // ---------------- SUBSCRIPTION ----------------
-        JSONObject subReq = new JSONObject();
+        // ------------------------------------------------
+        // 2️⃣ CREATE SUBSCRIPTION
+        // ------------------------------------------------
+        ObjectNode subReq = objectMapper.createObjectNode();
         subReq.put("plan_id", plan.get("id"));
         subReq.put("customer_notify", 1);
         subReq.put("total_count", subscriptionYears * 12);
-        subReq.put("start_at", getNextStartDate(startDay));
 
-        // ✅ SAFE ADDON
-        JSONObject authAddon = new JSONObject();
-        authAddon.put("item", new JSONObject()
-                .put("name", "Mandate Authorization")
-                .put("amount", 100)
-                .put("currency", "INR"));
+        long startAt = getNextStartDate(startDay);
+        subReq.put("start_at", startAt);
 
-        org.json.JSONArray addonsArray = new org.json.JSONArray();
-        addonsArray.put(authAddon);
-        subReq.put("addons", addonsArray);
+        // -------- ADDONS (₹1 AUTH) --------
+        ArrayNode addons = objectMapper.createArrayNode();
 
-        subReq.put("notes", new JSONObject()
-                .put("donorId", donorId)
-                .put("monthlyAmount", String.valueOf(amount)));
+        ObjectNode addon = objectMapper.createObjectNode();
+        ObjectNode addonItem = objectMapper.createObjectNode();
+        addonItem.put("name", "Mandate Authorization");
+        addonItem.put("amount", 100);
+        addonItem.put("currency", "INR");
+        addon.set("item", addonItem);
 
-        System.out.println("📦 Subscription payload:\n" + subReq.toString(2));
+        addons.add(addon);
+        subReq.set("addons", addons);
 
-        Subscription subscription = client.subscriptions.create(subReq);
+        // -------- NOTES --------
+        ObjectNode notes = objectMapper.createObjectNode();
+        notes.put("donorId", donorId);
+        notes.put("monthlyAmount", String.valueOf(amount));
+        subReq.set("notes", notes);
+
+        System.out.println("📦 SUBSCRIPTION JSON:\n" + subReq.toPrettyString());
+
+        Subscription subscription =
+                client.subscriptions.create(new com.razorpay.JSONObject(subReq.toString()));
 
         donor.setSubscriptionId(subscription.get("id"));
         donor.setSubscriptionStatus("CREATED");
         donor.setMonthlyAmount((double) amount);
         donor.setStartDay(startDay);
-        donor.setRecordType("SUBSCRIPTION_PARENT");
 
         donationRepo.save(donor);
+
+        System.out.println("✅ SUBSCRIPTION CREATED: " + subscription.get("id"));
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "subscription_id", subscription.get("id"),
+                "plan_id", plan.get("id"),
                 "keyId", keyId
         ));
 
     } catch (Exception e) {
-        System.out.println("❌ CREATE SUBSCRIPTION FAILED");
+        System.err.println("❌ CREATE SUBSCRIPTION FAILED");
         e.printStackTrace();
-        return ResponseEntity.status(500)
-                .body(Map.of("success", false, "message", e.getMessage()));
+        return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
     }
 }
 
@@ -3709,6 +3726,7 @@ public ResponseEntity<String> razorpayWebhook(
     
 
 }
+
 
 
 
