@@ -3166,7 +3166,7 @@
         
 // }
 // --------------------------------------------------------------------------------------
-//last try 
+// //last try 
 package com.komal.template_backend.controller;
 
 import com.komal.template_backend.model.Donourentity;
@@ -3406,7 +3406,291 @@ private PdfReceiptServic pdfReceiptService;
         }
         return sb.toString();
     }
+    //     // --------------------------------------------------------------------
+//     // CREATE DONOR (SUBSCRIPTION)
+//     // --------------------------------------------------------------------
+
+    @PostMapping("/create-donor-record")
+    public ResponseEntity<?> createDonor(@RequestBody Donourentity donor) {
+        System.out.println("========= CREATE SUBSCRIPTION DONOR RECORD =========");
+        try {
+            donor.setStatus("PENDING");
+            donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+            Donourentity saved = donationService.saveDonation(donor);
+            return ResponseEntity.ok(Map.of("success", true, "donorId", saved.getId()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    private int parseIntSafe(Object o, int fallback) {
+        try {
+            if (o == null) return fallback;
+            if (o instanceof Number) return ((Number) o).intValue();
+            String s = String.valueOf(o).trim();
+            return s.isEmpty() ? fallback : Integer.parseInt(s);
+        } catch (Exception ex) {
+            return fallback;
+        }
+    }
+
+    private long getNextStartDate(int startDay) {
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+        LocalDateTime next;
+
+        int today = now.getDayOfMonth();
+        if (today < startDay) {
+            next = now.withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
+        } else {
+            next = now.plusMonths(1).withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
+        }
+
+        return next.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
+    }
+
+    // --------------------------------------------------------------------
+    // SUBSCRIPTION CREATE
+    // --------------------------------------------------------------------
+
+   @PostMapping("/create-subscription")
+public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
+
+    System.out.println("\n================ CREATE SUBSCRIPTION ================");
+    System.out.println("📩 Incoming request: " + req);
+
+    try {
+        String donorId = String.valueOf(req.get("donorId"));
+        int amount = Integer.parseInt(req.get("amount").toString());
+
+        System.out.println("➡ donorId = " + donorId);
+        System.out.println("➡ monthly amount = ₹" + amount);
+
+        Donourentity donor = donationRepo.findById(donorId)
+                .orElseThrow(() -> new RuntimeException("Donor not found"));
+
+        RazorpayClient client = new RazorpayClient(keyId, keySecret);
+
+        // ---------------- PLAN ----------------
+        JSONObject planReq = new JSONObject();
+        planReq.put("period", "monthly");
+        planReq.put("interval", 1);
+        planReq.put("item", new JSONObject()
+                .put("name", "Monthly Donation")
+                .put("amount", amount * 100)
+                .put("currency", "INR"));
+
+        System.out.println("📦 Creating plan: " + planReq);
+        Plan plan = client.plans.create(planReq);
+        System.out.println("✅ Plan created: " + plan.get("id"));
+
+        // ---------------- SUBSCRIPTION ----------------
+        JSONObject subReq = new JSONObject();
+        subReq.put("plan_id", plan.get("id"));
+        subReq.put("total_count", subscriptionYears * 12);
+        subReq.put("customer_notify", 1);
+        subReq.put("notes", Map.of("donorId", donorId));
+
+        System.out.println("📦 Creating subscription: " + subReq);
+        Subscription sub = client.subscriptions.create(subReq);
+        System.out.println("✅ Subscription created: " + sub.get("id"));
+
+        donor.setPlanId(plan.get("id"));
+        donor.setSubscriptionId(sub.get("id"));
+        donor.setSubscriptionStatus("CREATED");
+        donor.setMandateStatus("NOT_STARTED");
+        donor.setMonthlyAmount((double) amount);
+        donor.setRecordType("SUBSCRIPTION_PARENT");
+
+        donationRepo.save(donor);
+        System.out.println("💾 Subscription saved in DB");
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "subscription_id", sub.get("id"),
+                "keyId", keyId
+        ));
+
+    } catch (Exception e) {
+        System.out.println("❌ CREATE SUBSCRIPTION FAILED");
+        e.printStackTrace();
+        return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+        ));
+    }
 }
+@PostMapping("/razorpay-webhook")
+public ResponseEntity<String> razorpayWebhook(
+        @RequestBody String payload,
+        @RequestHeader("X-Razorpay-Signature") String signature
+) {
+
+    System.out.println("\n\n================ 🔔 RAZORPAY WEBHOOK ================");
+    System.out.println("📩 PAYLOAD:\n" + payload);
+    System.out.println("🔑 SIGNATURE: " + signature);
+
+    try {
+        Utils.verifyWebhookSignature(payload, signature, webhookSecret);
+        System.out.println("✅ Signature verified");
+
+        JSONObject json = new JSONObject(payload);
+        String event = json.getString("event");
+        System.out.println("📣 EVENT = " + event);
+
+        JSONObject payloadObj = json.getJSONObject("payload");
+
+        JSONObject subscription =
+                payloadObj.optJSONObject("subscription") != null
+                        ? payloadObj.getJSONObject("subscription").getJSONObject("entity")
+                        : null;
+
+        JSONObject payment =
+                payloadObj.optJSONObject("payment") != null
+                        ? payloadObj.getJSONObject("payment").getJSONObject("entity")
+                        : null;
+
+        // =====================================================
+        // 1️⃣ AUTH (₹0 / ₹1)
+        // =====================================================
+        if ("subscription.authenticated".equals(event)) {
+
+            String subId = subscription.getString("id");
+            System.out.println("🟢 AUTH COMPLETED | subId=" + subId);
+
+            donationRepo.findBySubscriptionId(subId).ifPresent(d -> {
+                d.setSubscriptionStatus("AUTHENTICATED");
+                d.setMandateStatus("ACTIVE");
+                d.setStatus("ACTIVE");
+                donationRepo.save(d);
+                System.out.println("💾 AUTH status saved");
+            });
+        }
+
+        // =====================================================
+        // 2️⃣ BANK FINAL APPROVAL
+        // =====================================================
+        if ("subscription.activated".equals(event)) {
+
+            String subId = subscription.getString("id");
+            System.out.println("🏦 BANK APPROVED | subId=" + subId);
+
+            donationRepo.findBySubscriptionId(subId).ifPresent(d -> {
+                d.setSubscriptionStatus("ACTIVE");
+                d.setMandateStatus("AUTHORIZED");
+                donationRepo.save(d);
+                System.out.println("💾 Mandate authorized");
+
+                try {
+                    Donourentity dec = donationService.findByIdDecrypt(d.getId());
+                    byte[] pdf = pdfReceiptService.generateMandateConfirmation(dec);
+
+                    mailService.sendDonationReceiptWithAttachment(
+                            dec.getEmail(),
+                            dec.getFirstName() + " " + dec.getLastName(),
+                            dec.getMonthlyAmount(),
+                            subId,
+                            pdf,
+                            "Mandate_Confirmation.pdf"
+                    );
+                    System.out.println("📧 Mandate confirmation email sent");
+
+                } catch (Exception e) {
+                    System.out.println("❌ Mandate email failed");
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        // =====================================================
+        // 3️⃣ MONTHLY REAL PAYMENT
+        // =====================================================
+        if ("subscription.charged".equals(event)) {
+
+            String paymentId = payment.getString("id");
+            String subId = payment.getString("subscription_id");
+            double amount = payment.getInt("amount") / 100.0;
+
+            System.out.println("💰 MONTHLY DEBIT");
+            System.out.println("➡ paymentId=" + paymentId);
+            System.out.println("➡ amount=₹" + amount);
+
+            if (donationRepo.existsByPaymentId(paymentId)) {
+                System.out.println("⚠️ DUPLICATE PAYMENT — SKIPPED");
+                return ResponseEntity.ok("DUPLICATE");
+            }
+
+            donationRepo.findBySubscriptionId(subId).ifPresent(parent -> {
+
+                Donourentity monthly = new Donourentity();
+                monthly.setSubscriptionId(subId);
+                monthly.setPaymentId(paymentId);
+                monthly.setAmount(amount);
+                monthly.setStatus("SUCCESS");
+                monthly.setPaymentStatus("SUCCESS");
+                monthly.setRecordType("SUBSCRIPTION_MONTHLY");
+                monthly.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+
+                donationRepo.save(monthly);
+                System.out.println("💾 Monthly donation saved");
+
+                try {
+                    Donourentity dec =
+                            donationService.findByIdDecrypt(parent.getId());
+
+                    byte[] pdf =
+                            pdfReceiptService.generateMonthlyDebitReceipt(
+                                    dec, paymentId, amount);
+
+                    mailService.sendDonationReceiptWithAttachment(
+                            dec.getEmail(),
+                            dec.getFirstName() + " " + dec.getLastName(),
+                            amount,
+                            paymentId,
+                            pdf,
+                            "Monthly_Receipt.pdf"
+                    );
+                    System.out.println("📧 Monthly receipt sent");
+
+                } catch (Exception e) {
+                    System.out.println("❌ Monthly receipt failed");
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        // =====================================================
+        // 4️⃣ CANCEL / HALT
+        // =====================================================
+        if (event.equals("subscription.cancelled") ||
+            event.equals("subscription.halted")) {
+
+            String subId = subscription.getString("id");
+            System.out.println("⛔ SUBSCRIPTION STOPPED | subId=" + subId);
+
+            donationRepo.findBySubscriptionId(subId).ifPresent(d -> {
+                d.setSubscriptionStatus("INACTIVE");
+                d.setMandateStatus("INACTIVE");
+                d.setStatus("FAILED");
+                donationRepo.save(d);
+                System.out.println("💾 Subscription marked inactive");
+            });
+        }
+
+        System.out.println("✅ WEBHOOK DONE");
+        return ResponseEntity.ok("OK");
+
+    } catch (Exception e) {
+        System.out.println("❌ WEBHOOK FAILED");
+        e.printStackTrace();
+        return ResponseEntity.status(400).body("INVALID");
+    }
+}
+
+    
+
+}
+
 
 
 
