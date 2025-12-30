@@ -3409,59 +3409,23 @@ private PdfReceiptServic pdfReceiptService;
     //     // --------------------------------------------------------------------
 //     // CREATE DONOR (SUBSCRIPTION)
 //     // --------------------------------------------------------------------
-
-    @PostMapping("/create-donor-record")
-    public ResponseEntity<?> createDonor(@RequestBody Donourentity donor) {
-        System.out.println("========= CREATE SUBSCRIPTION DONOR RECORD =========");
-        try {
-            donor.setStatus("PENDING");
-            donor.setDonationDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-            Donourentity saved = donationService.saveDonation(donor);
-            return ResponseEntity.ok(Map.of("success", true, "donorId", saved.getId()));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
-        }
-    }
-
-    private int parseIntSafe(Object o, int fallback) {
-        try {
-            if (o == null) return fallback;
-            if (o instanceof Number) return ((Number) o).intValue();
-            String s = String.valueOf(o).trim();
-            return s.isEmpty() ? fallback : Integer.parseInt(s);
-        } catch (Exception ex) {
-            return fallback;
-        }
-    }
-
-    private long getNextStartDate(int startDay) {
-        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
-        LocalDateTime next;
-
-        int today = now.getDayOfMonth();
-        if (today < startDay) {
-            next = now.withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
-        } else {
-            next = now.plusMonths(1).withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
-        }
-
-        return next.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
-    }
-
-    // --------------------------------------------------------------------
-    // SUBSCRIPTION CREATE
-    // --------------------------------------------------------------------
 @PostMapping("/create-subscription")
 public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req) {
 
-    System.out.println("\n================ CREATE SUBSCRIPTION START ================");
-    System.out.println("📥 Incoming request: " + req);
+    System.out.println("\n================ 🔵 CREATE SUBSCRIPTION START ================");
+    System.out.println("📥 Incoming: " + req);
 
     try {
         String donorId = String.valueOf(req.get("donorId"));
-        int amount = Integer.parseInt(req.get("amount").toString());
-        int startDay = Integer.parseInt(req.getOrDefault("starterAmount", 10).toString());
+        int amount = parseIntSafe(req.get("amount"), 0);
+
+        if (amount <= 0) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", "Invalid amount"));
+        }
+
+        int startDay = parseIntSafe(req.get("starterAmount"), 10);
+        if (startDay < 1 || startDay > 28) startDay = 10;
 
         System.out.println("➡ donorId=" + donorId + ", amount=" + amount + ", startDay=" + startDay);
 
@@ -3470,9 +3434,9 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
 
         RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
-        // -----------------------------
-        // 1️⃣ CREATE PLAN
-        // -----------------------------
+        // =================================================
+        // 1️⃣ PLAN
+        // =================================================
         JSONObject planItem = new JSONObject();
         planItem.put("name", "Monthly Donation");
         planItem.put("amount", amount * 100);
@@ -3491,36 +3455,34 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
         donor.setPlanId(plan.get("id"));
         donationRepo.save(donor);
 
-        // -----------------------------
-        // 2️⃣ ₹1 AUTH ADDON (JSON SAFE)
-        // -----------------------------
-        JSONObject addonItem = new JSONObject();
-        addonItem.put("name", "Mandate Authorization");
-        addonItem.put("amount", 100);
-        addonItem.put("currency", "INR");
+        // =================================================
+        // 2️⃣ ADDONS (SAFE – INLINE JSONARRAY)
+        // =================================================
+        JSONObject authAddon = new JSONObject();
+        authAddon.put("item", new JSONObject()
+                .put("name", "Mandate Authorization")
+                .put("amount", 100)          // ₹1 (Razorpay may do ₹0)
+                .put("currency", "INR"));
 
-        JSONObject addon = new JSONObject();
-        addon.put("item", addonItem);
-
-        // -----------------------------
-        // 3️⃣ SUBSCRIPTION PAYLOAD
-        // -----------------------------
-        JSONObject notes = new JSONObject();
-        notes.put("donorId", donorId);
-        notes.put("monthlyAmount", String.valueOf(amount));
-
+        // =================================================
+        // 3️⃣ SUBSCRIPTION
+        // =================================================
         JSONObject subReq = new JSONObject();
         subReq.put("plan_id", plan.get("id"));
         subReq.put("customer_notify", 1);
         subReq.put("total_count", subscriptionYears * 12);
         subReq.put("start_at", getNextStartDate(startDay));
-        subReq.put("addons", new org.json.JSONArray().put(addon));
-        subReq.put("notes", notes);
+
+        // 🔴 THIS IS THE CRITICAL FIX
+        subReq.put("addons", new org.json.JSONArray().put(authAddon));
+
+        subReq.put("notes", new JSONObject()
+                .put("donorId", donorId)
+                .put("monthlyAmount", String.valueOf(amount)));
 
         System.out.println("📦 Subscription payload:\n" + subReq.toString(2));
 
         Subscription subscription = client.subscriptions.create(subReq);
-
         System.out.println("✅ Subscription created: " + subscription.get("id"));
 
         donor.setSubscriptionId(subscription.get("id"));
@@ -3544,6 +3506,8 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
                 .body(Map.of("success", false, "message", e.getMessage()));
     }
 }
+
+  
 
 
 @PostMapping("/razorpay-webhook")
@@ -3716,6 +3680,7 @@ public ResponseEntity<String> razorpayWebhook(
     
 
 }
+
 
 
 
