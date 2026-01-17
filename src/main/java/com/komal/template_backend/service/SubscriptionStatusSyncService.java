@@ -135,249 +135,26 @@
 //         }
 //     }
 // }
-// package com.komal.template_backend.service;
-// // test
-// import com.komal.template_backend.model.Donourentity;
-// import com.komal.template_backend.repo.DonationRepo;
-// import com.komal.template_backend.service.MailService;
-// import com.komal.template_backend.service.PdfReceiptServic;
-// import com.komal.template_backend.service.DonationService;
-// import com.razorpay.RazorpayClient;
-// import com.razorpay.Subscription;
-// import org.json.JSONObject;
-// import org.springframework.beans.factory.annotation.Value;
-// import org.springframework.scheduling.annotation.Scheduled;
-// import org.springframework.stereotype.Service;
 
-// import java.util.List;
-// @Service
-// public class SubscriptionStatusSyncService {
-
-//     @Value("${razorpay.key_id}")
-//     private String keyId;
-
-//     @Value("${razorpay.key_secret}")
-//     private String keySecret;
-
-//     private final DonationRepo donationRepo;
-//     private final MailService mailService;
-//     private final PdfReceiptServic pdfReceiptService;
-//     private final DonationService donationService;
-
-//     public SubscriptionStatusSyncService(
-//             DonationRepo donationRepo,
-//             MailService mailService,
-//             PdfReceiptServic pdfReceiptService,
-//             DonationService donationService
-//     ) {
-//         this.donationRepo = donationRepo;
-//         this.mailService = mailService;
-//         this.pdfReceiptService = pdfReceiptService;
-//         this.donationService = donationService;
-//     }
-
-//     // ✅ Runs every 10 minutes
-//     @Scheduled(fixedDelay = 10 * 60 * 1000)
-//     public void syncSubscriptionsFromRazorpay() {
-
-//         System.out.println("🔁 Subscription watcher started");
-
-//         // List<Donourentity> donors = donationRepo.findActiveSubscriptions();
-//         List<Donourentity> donors = donationRepo.findSubscriptionsForSync();
-
-//         if (donors.isEmpty()) return;
-
-//         try {
-//             RazorpayClient client = new RazorpayClient(keyId, keySecret);
-
-//             for (Donourentity donor : donors) {
-
-//                 if (donor.getSubscriptionId() == null) continue;
-
-//                 Subscription subscription =
-//                         client.subscriptions.fetch(donor.getSubscriptionId());
-
-//                 JSONObject sub = subscription.toJson();
-//                 String rzpStatus =
-//                         sub.optString("status", "UNKNOWN").toUpperCase();
-
-//                 String localStatus = donor.getSubscriptionStatus();
-
-//                 // ✅ No change
-//                 if (rzpStatus.equals(localStatus)) continue;
-
-//                 donor.setSubscriptionStatus(rzpStatus);
-// if ("CREATED".equals(rzpStatus)) {
-//     donor.setMandateStatus("NOT_STARTED");
-//     donor.setStatus("PENDING");
-// }
-
-//                 // ==================================================
-//                 // ✅ MANDATE BANK APPROVAL (DERIVED)
-//                 // ==================================================
-//          else if ("CANCELLED".equals(rzpStatus)
-//                         || "HALTED".equals(rzpStatus)
-//                         || "EXPIRED".equals(rzpStatus)) {
-
-//                     donor.setStatus("FAILED");
-//                     donor.setMandateStatus("CANCELLED");
-//                 }
-
-//                 donationRepo.save(donor);
-//                 System.out.println("✅ Synced " + donor.getSubscriptionId() + " → " + rzpStatus);
-//             }
-
-//         } catch (Exception e) {
-//             System.out.println("❌ Subscription watcher crashed");
-//             e.printStackTrace();
-//         }
-//     }
-// }
 // ------------------------------------------------------------------------------------------------
-// package com.komal.template_backend.service;
-
-// import com.komal.template_backend.model.Donourentity;
-// import com.komal.template_backend.repo.DonationRepo;
-// import com.komal.template_backend.service.MailService;
-// import com.komal.template_backend.service.PdfReceiptServic;
-// import com.komal.template_backend.service.DonationService;
-// import com.razorpay.RazorpayClient;
-// import com.razorpay.Subscription;
-
-// import org.json.JSONObject;
-
-// import org.springframework.beans.factory.annotation.Value;
-// import org.springframework.scheduling.annotation.Scheduled;
-// import org.springframework.stereotype.Service;
-
-// import java.time.LocalDateTime;
-// import java.time.ZoneId;
-// import java.util.List;
-
-// @Service
-// public class SubscriptionStatusSyncService {
-
-//     @Value("${razorpay.key_id}")
-//     private String keyId;
-
-//     @Value("${razorpay.key_secret}")
-//     private String keySecret;
-
-//     private final DonationRepo donationRepo;
-//     private final MailService mailService;
-//     private final PdfReceiptServic pdfReceiptService;
-//     private final DonationService donationService;
-
-//     public SubscriptionStatusSyncService(
-//             DonationRepo donationRepo,
-//             MailService mailService,
-//             PdfReceiptServic pdfReceiptService,
-//             DonationService donationService
-//     ) {
-//         this.donationRepo = donationRepo;
-//         this.mailService = mailService;
-//         this.pdfReceiptService = pdfReceiptService;
-//         this.donationService = donationService;
-//     }
-
-//     // Runs every 10 minutes
-//     @Scheduled(fixedDelay = 10 * 60 * 1000)
-//     public void syncSubscriptionsFromRazorpay() {
-
-//         List<Donourentity> donors = donationRepo.findSubscriptionsForSync();
-//         if (donors.isEmpty()) return;
-
-//         try {
-//             RazorpayClient client = new RazorpayClient(keyId, keySecret);
-
-//             for (Donourentity donor : donors) {
-
-//                 if (donor.getSubscriptionId() == null) continue;
-
-//                 Subscription subscription =
-//                         client.subscriptions.fetch(donor.getSubscriptionId());
-
-//                 JSONObject sub = subscription.toJson();
-//                 String rzpStatus =
-//                         sub.optString("status", "UNKNOWN").toUpperCase();
-
-//                 if (rzpStatus.equals(donor.getSubscriptionStatus())) {
-//                     continue;
-//                 }
-
-//                 donor.setSubscriptionStatus(rzpStatus);
-
-//                 if ("AUTHENTICATED".equals(rzpStatus)) {
-//                     donor.setMandateStatus("USER_AUTHENTICATED");
-//                     donor.setStatus("USER_AUTHENTICATED");
-//                         if (Boolean.FALSE.equals(donor.getSetupMailSent())) {
-//                         mailService.sendMail(
-//                                 donor.getEmail(),
-//                                 "Mandate authentication successful",
-//                                 "Dear " + donor.getFirstName() + ",\n\n"
-//                               + "You have successfully authenticated the mandate.\n"
-//                               + "Bank approval may take 24–48 hours.\n\n"
-//                               + "Regards,\nFeed The Hunger Seva Sangha"
-//                         );
-//                         donor.setSetupMailSent(true);
-//                         donationRepo.save(donor);
-//                     }
-//                 }
-
-//                 if ("ACTIVE".equals(rzpStatus)) {
-//                     donor.setMandateStatus("AUTHORIZED");
-//                     donor.setStatus("SUCCESS");
-
-//                     if (Boolean.FALSE.equals(donor.getMandateMailSent())) {
-//                         Donourentity decrypted =
-//                                 donationService.findByIdDecrypt(donor.getId());
-
-//                         byte[] pdf =
-//                                 pdfReceiptService.generateMandateConfirmation(decrypted);
-
-//                         mailService.sendDonationReceiptWithAttachment(
-//                                 decrypted.getEmail(),
-//                                 decrypted.getFirstName() + " " + decrypted.getLastName(),
-//                                 decrypted.getMonthlyAmount(),
-//                                 donor.getSubscriptionId(),
-//                                 pdf,
-//                                 "Mandate_Approved_" + donor.getSubscriptionId() + ".pdf"
-//                         );
-
-//                         donor.setMandateMailSent(true);
-//                     }
-//                 }
-
-//                 if ("CANCELLED".equals(rzpStatus)
-//                         || "HALTED".equals(rzpStatus)
-//                         || "EXPIRED".equals(rzpStatus)) {
-
-//                     donor.setStatus("FAILED");
-//                     donor.setMandateStatus("CANCELLED");
-//                 }
-
-//                 donationRepo.save(donor);
-//             }
-
-//         } catch (Exception e) {
-//             e.printStackTrace();
-//         }
-//     }
-// }
-// -------------------------------------------------------------------------------------
-
-// final
 package com.komal.template_backend.service;
 
 import com.komal.template_backend.model.Donourentity;
 import com.komal.template_backend.repo.DonationRepo;
+import com.komal.template_backend.service.MailService;
+import com.komal.template_backend.service.PdfReceiptServic;
+import com.komal.template_backend.service.DonationService;
 import com.razorpay.RazorpayClient;
 import com.razorpay.Subscription;
+
 import org.json.JSONObject;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -390,127 +167,206 @@ public class SubscriptionStatusSyncService {
     private String keySecret;
 
     private final DonationRepo donationRepo;
+    private final MailService mailService;
+    private final PdfReceiptServic pdfReceiptService;
+    private final DonationService donationService;
 
-    public SubscriptionStatusSyncService(DonationRepo donationRepo) {
+    public SubscriptionStatusSyncService(
+            DonationRepo donationRepo,
+            MailService mailService,
+            PdfReceiptServic pdfReceiptService,
+            DonationService donationService
+    ) {
         this.donationRepo = donationRepo;
+        this.mailService = mailService;
+        this.pdfReceiptService = pdfReceiptService;
+        this.donationService = donationService;
     }
 
-    // ==========================================================
-    // ⏰ Runs every 10 minutes (Webhook SAFETY NET)
-    // ==========================================================
+    // Runs every 10 minutes
+    // @Scheduled(fixedDelay = 10 * 60 * 1000)
+    // public void syncSubscriptionsFromRazorpay() {
+
+    //     List<Donourentity> donors = donationRepo.findSubscriptionsForSync();
+    //     if (donors.isEmpty()) return;
+
+    //     try {
+    //         RazorpayClient client = new RazorpayClient(keyId, keySecret);
+
+    //         for (Donourentity donor : donors) {
+
+    //             if (donor.getSubscriptionId() == null) continue;
+
+    //             Subscription subscription =
+    //                     client.subscriptions.fetch(donor.getSubscriptionId());
+
+    //             JSONObject sub = subscription.toJson();
+    //             String rzpStatus =
+    //                     sub.optString("status", "UNKNOWN").toUpperCase();
+
+    //             if (rzpStatus.equals(donor.getSubscriptionStatus())) {
+    //                 continue;
+    //             }
+
+    //             donor.setSubscriptionStatus(rzpStatus);
+
+    //             if ("AUTHENTICATED".equals(rzpStatus)) {
+    //                 donor.setMandateStatus("USER_AUTHENTICATED");
+    //                 donor.setStatus("USER_AUTHENTICATED");
+    //                     if (Boolean.FALSE.equals(donor.getSetupMailSent())) {
+    //                     mailService.sendMail(
+    //                             donor.getEmail(),
+    //                             "Mandate authentication successful",
+    //                             "Dear " + donor.getFirstName() + ",\n\n"
+    //                           + "You have successfully authenticated the mandate.\n"
+    //                           + "Bank approval may take 24–48 hours.\n\n"
+    //                           + "Regards,\nFeed The Hunger Seva Sangha"
+    //                     );
+    //                     donor.setSetupMailSent(true);
+    //                     donationRepo.save(donor);
+    //                 }
+    //             }
+
+    //             if ("ACTIVE".equals(rzpStatus)) {
+    //                 donor.setMandateStatus("AUTHORIZED");
+    //                 donor.setStatus("SUCCESS");
+
+    //                 if (Boolean.FALSE.equals(donor.getMandateMailSent())) {
+    //                     Donourentity decrypted =
+    //                             donationService.findByIdDecrypt(donor.getId());
+
+    //                     byte[] pdf =
+    //                             pdfReceiptService.generateMandateConfirmation(decrypted);
+
+    //                     mailService.sendDonationReceiptWithAttachment(
+    //                             decrypted.getEmail(),
+    //                             decrypted.getFirstName() + " " + decrypted.getLastName(),
+    //                             decrypted.getMonthlyAmount(),
+    //                             donor.getSubscriptionId(),
+    //                             pdf,
+    //                             "Mandate_Approved_" + donor.getSubscriptionId() + ".pdf"
+    //                     );
+
+    //                     donor.setMandateMailSent(true);
+    //                 }
+    //             }
+
+    //             if ("CANCELLED".equals(rzpStatus)
+    //                     || "HALTED".equals(rzpStatus)
+    //                     || "EXPIRED".equals(rzpStatus)) {
+
+    //                 donor.setStatus("FAILED");
+    //                 donor.setMandateStatus("CANCELLED");
+    //             }
+
+    //             donationRepo.save(donor);
+    //         }
+
+    //     } catch (Exception e) {
+    //         e.printStackTrace();
+    //     }
+    // }
     @Scheduled(fixedDelay = 10 * 60 * 1000)
-    public void syncSubscriptionsFromRazorpay() {
+public void syncSubscriptionsFromRazorpay() {
 
-        System.out.println("\n🔁 ===== SUBSCRIPTION WATCHER STARTED =====");
+    List<Donourentity> donors = donationRepo.findSubscriptionsForSync();
+    if (donors.isEmpty()) return;
 
-        List<Donourentity> parents = donationRepo.findSubscriptionsForSync();
+    try {
+        RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
-        if (parents.isEmpty()) {
-            System.out.println("ℹ️ No subscriptions to sync");
-            return;
-        }
+        for (Donourentity donor : donors) {
 
-        try {
-            RazorpayClient client = new RazorpayClient(keyId, keySecret);
+            if (donor.getSubscriptionId() == null) continue;
 
-            for (Donourentity donor : parents) {
+            Subscription subscription =
+                    client.subscriptions.fetch(donor.getSubscriptionId());
 
-                if (donor.getSubscriptionId() == null) continue;
+            JSONObject sub = subscription.toJson();
+            String rzpStatus =
+                    sub.optString("status", "UNKNOWN").toUpperCase();
 
-                System.out.println("\n➡ Checking subscription: " + donor.getSubscriptionId());
-
-                Subscription subscription =
-                        client.subscriptions.fetch(donor.getSubscriptionId());
-
-                JSONObject sub = subscription.toJson();
-                String rzpStatus =
-                        sub.optString("status", "UNKNOWN").toUpperCase();
-
-                String localStatus =
-                        donor.getSubscriptionStatus() != null
-                                ? donor.getSubscriptionStatus().toUpperCase()
-                                : "NULL";
-
-                System.out.println("   Razorpay Status : " + rzpStatus);
-                System.out.println("   Local Status    : " + localStatus);
-
-                // --------------------------------------------------
-                // NO CHANGE → SKIP
-                // --------------------------------------------------
-                if (rzpStatus.equals(localStatus)) {
-                    System.out.println("   ✔ No change, skipping");
-                    continue;
-                }
-
-                // --------------------------------------------------
-                // CREATED → USER NOT AUTHENTICATED
-                // --------------------------------------------------
-                if ("CREATED".equals(rzpStatus)) {
-                    donor.setSubscriptionStatus("CREATED");
-                    donor.setMandateStatus("NOT_STARTED");
-                    donor.setStatus("PENDING");
-
-                    System.out.println("   🟡 Subscription created, mandate not started");
-                }
-
-                // --------------------------------------------------
-                // AUTHENTICATED → USER + BANK AUTH DONE
-                // --------------------------------------------------
-                else if ("AUTHENTICATED".equals(rzpStatus)) {
-                    donor.setSubscriptionStatus("AUTHENTICATED");
-                    donor.setMandateStatus("ACTIVE");
-                    donor.setStatus("ACTIVE");
-
-                    System.out.println("   🟢 Mandate authenticated");
-                }
-
-                // --------------------------------------------------
-                // ACTIVE → READY FOR AUTO-DEBIT
-                // --------------------------------------------------
-                else if ("ACTIVE".equals(rzpStatus)) {
-                    donor.setSubscriptionStatus("ACTIVE");
-                    donor.setMandateStatus("AUTHORIZED");
-                    donor.setStatus("ACTIVE");
-
-                    System.out.println("   🟢 Mandate fully active");
-                }
-
-                // --------------------------------------------------
-                // STOPPED / FAILED
-                // --------------------------------------------------
-                else if ("CANCELLED".equals(rzpStatus)
-                        || "HALTED".equals(rzpStatus)
-                        || "EXPIRED".equals(rzpStatus)
-                        || "COMPLETED".equals(rzpStatus)) {
-
-                    donor.setSubscriptionStatus(rzpStatus);
-                    donor.setMandateStatus("CANCELLED");
-                    donor.setStatus("FAILED");
-
-                    System.out.println("   🔴 Subscription stopped: " + rzpStatus);
-                }
-
-                // --------------------------------------------------
-                // UNKNOWN → DO NOT TOUCH
-                // --------------------------------------------------
-                else {
-                    System.out.println("   ⚠ Unknown status, skipping update");
-                    continue;
-                }
-
-                donationRepo.save(donor);
-                System.out.println("   ✅ DB updated successfully");
+            if (rzpStatus.equals(donor.getSubscriptionStatus())) {
+                continue;
             }
 
-        } catch (Exception e) {
-            System.out.println("❌ Subscription watcher crashed");
-            e.printStackTrace();
+            donor.setSubscriptionStatus(rzpStatus);
+
+            // =====================================================
+            // AUTHENTICATED
+            // =====================================================
+            if ("AUTHENTICATED".equals(rzpStatus)) {
+
+                donor.setMandateStatus("USER_AUTHENTICATED");
+                donor.setStatus("USER_AUTHENTICATED");
+
+                if (Boolean.FALSE.equals(donor.getSetupMailSent())) {
+                    mailService.sendMail(
+                            donor.getEmail(),
+                            "Mandate authentication successful",
+                            "Dear " + donor.getFirstName() + ",\n\n"
+                          + "You have successfully authenticated the mandate.\n"
+                          + "Bank approval may take 24–48 hours.\n\n"
+                          + "Regards,\nFeed The Hunger Seva Sangha"
+                    );
+
+                    donor.setSetupMailSent(true);
+                }
+            }
+
+            // =====================================================
+            // ACTIVE (Bank approved)
+            // =====================================================
+            if ("ACTIVE".equals(rzpStatus)) {
+
+                donor.setMandateStatus("AUTHORIZED");
+                donor.setStatus("SUCCESS");
+
+                if (Boolean.FALSE.equals(donor.getMandateMailSent())) {
+
+                    Donourentity decrypted =
+                            donationService.findByIdDecrypt(donor.getId());
+
+                    byte[] pdf =
+                            pdfReceiptService.generateMandateConfirmation(decrypted);
+
+                    mailService.sendDonationReceiptWithAttachment(
+                            decrypted.getEmail(),
+                            decrypted.getFirstName() + " " + decrypted.getLastName(),
+                            decrypted.getMonthlyAmount(),
+                            donor.getSubscriptionId(),
+                            pdf,
+                            "Mandate_Approved_" + donor.getSubscriptionId() + ".pdf"
+                    );
+
+                    donor.setMandateMailSent(true);
+                }
+            }
+
+            // =====================================================
+            // CANCEL / HALT / EXPIRE
+            // =====================================================
+            if ("CANCELLED".equals(rzpStatus)
+                    || "HALTED".equals(rzpStatus)
+                    || "EXPIRED".equals(rzpStatus)) {
+
+                donor.setStatus("FAILED");
+                donor.setMandateStatus("CANCELLED");
+            }
+
+            // ✅ SINGLE SAVE AT END (IMPORTANT)
+            donationRepo.save(donor);
         }
 
-        System.out.println("🔁 ===== SUBSCRIPTION WATCHER COMPLETED =====\n");
+    } catch (Exception e) {
+        e.printStackTrace();
     }
 }
 
+}
+// -------------------------------------------------------------------------------------
+
+// final
 
 
 
