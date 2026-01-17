@@ -1801,7 +1801,7 @@ public ResponseEntity<?> createSubscription(@RequestBody Map<String, Object> req
 
         Map<String, Object> subscriptionRequest = new HashMap<>();
         subscriptionRequest.put("plan_id", plan.get("id"));
-        subscriptionRequest.put("customer_notify", 1);
+        subscriptionRequest.put("customer_notify", 0);
         subscriptionRequest.put("total_count", (subscriptionYears * 12) - 1);
         subscriptionRequest.put("notes", notes);
 
@@ -2967,6 +2967,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
