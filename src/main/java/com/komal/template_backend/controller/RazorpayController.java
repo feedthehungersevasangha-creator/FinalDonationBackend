@@ -1700,36 +1700,46 @@ private PdfReceiptServic pdfReceiptService;
             return fallback;
         }
     }
+private long getNextStartDate(int startDay) {
 
-    private long getNextStartDate(int startDay) {
-        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
-        LocalDateTime next;
+    ZoneId ist = ZoneId.of("Asia/Kolkata");
+    LocalDateTime now = LocalDateTime.now(ist);
 
-        int today = now.getDayOfMonth();
-        if (today < startDay) {
-            next = now.withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
-        } else {
-            next = now.plusMonths(1).withDayOfMonth(startDay).withHour(0).withMinute(0).withSecond(0);
-        }
+    int today = now.getDayOfMonth();
+    LocalDate startDate;
 
-        return next.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
+    if (today < startDay) {
+        startDate = now.toLocalDate()
+                .withDayOfMonth(
+                        Math.min(startDay, now.toLocalDate().lengthOfMonth()));
+    } else {
+        LocalDate nextMonth = now.toLocalDate().plusMonths(1);
+        startDate = nextMonth.withDayOfMonth(
+                Math.min(startDay, nextMonth.lengthOfMonth()));
     }
-// private long getNextStartDate(int startDay) {
 
-//     LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+    // ✅ FIXED TIME: 11:00 AM IST
+    LocalDateTime startDateTime = startDate.atTime(11, 0, 0);
 
-//     // ✅ ALWAYS move to NEXT month
-//     LocalDateTime nextMonth =
-//             now.plusMonths(1)
-//                .withDayOfMonth(Math.min(startDay,
-//                        now.plusMonths(1).toLocalDate().lengthOfMonth()))
-//                .withHour(0)
-//                .withMinute(0)
-//                .withSecond(0)
-//                .withNano(0);
+    return startDateTime.atZone(ist).toEpochSecond();
+}
+// private long getNextStartDateAlwaysNextMonth(int startDay) {
 
-//     return nextMonth.atZone(ZoneId.of("Asia/Kolkata")).toEpochSecond();
+//     ZoneId ist = ZoneId.of("Asia/Kolkata");
+//     LocalDateTime now = LocalDateTime.now(ist);
+
+//     LocalDate nextMonthDate = now.toLocalDate().plusMonths(1);
+
+//     LocalDate startDate = nextMonthDate.withDayOfMonth(
+//             Math.min(startDay, nextMonthDate.lengthOfMonth()));
+
+//     // ✅ FIXED TIME: 11:00 AM IST
+//     LocalDateTime startDateTime = startDate.atTime(11, 0, 0);
+
+//     return startDateTime.atZone(ist).toEpochSecond();
 // }
+
+    
 
   // --------------------------------------------------------------------
 // SUBSCRIPTION CREATE  (E-MANDATE)
@@ -2955,6 +2965,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
