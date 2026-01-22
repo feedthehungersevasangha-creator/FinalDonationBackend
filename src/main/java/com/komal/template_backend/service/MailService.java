@@ -171,6 +171,85 @@ public class MailService {
             e.printStackTrace();
         }
     }
+  public void sendMandateConfirmationMail(
+        String email,
+        String name,
+        String subscriptionId,
+        double monthlyAmount,
+        byte[] pdfBytes
+) {
+    try {
+        MimeMessage msg = javaMailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(msg, true);
+
+        helper.setTo(email);
+        helper.setSubject("e-Mandate Activated Successfully");
+
+        String body =
+                "Dear " + name + ",\n\n" +
+                "Your e-Mandate has been successfully activated for recurring donations to " +
+                "Feed The Hunger Seva Sangha.\n\n" +
+                "Mandate Details:\n" +
+                "--------------------------------\n" +
+                "Mandate ID: " + subscriptionId + "\n" +
+                "Monthly Amount: ₹" + String.format("%.2f", monthlyAmount) + "\n" +
+                "Frequency: Monthly\n" +
+                "--------------------------------\n\n" +
+                "Important:\n" +
+                "• Please maintain sufficient balance in your bank account\n" +
+                "• Failed debits may attract bank charges or mandate penalties\n" +
+                "• You can cancel this mandate anytime through your bank or by contacting us\n\n" +
+                "Thank you for supporting our mission.\n\n" +
+                "Warm regards,\n" +
+                "Feed The Hunger Seva Sangha";
+
+        helper.setText(body);
+        helper.addAttachment(
+                "Mandate_Confirmation_" + subscriptionId + ".pdf",
+                new ByteArrayResource(pdfBytes)
+        );
+
+        javaMailSender.send(msg);
+
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+        public void sendMandateCancellationMail(
+        String email,
+        String name,
+        String subscriptionId,
+        byte[] pdfBytes
+) {
+    try {
+        MimeMessage msg = javaMailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(msg, true);
+
+        helper.setTo(email);
+        helper.setSubject("e-Mandate n Cancelled");
+
+        String body =
+                "Dear " + name + ",\n\n" +
+                "This is to confirm that your e-Mandate / subscription with " +
+                "Feed The Hunger Seva Sangha has been cancelled.\n\n" +
+                "Subscription / Mandate ID: " + subscriptionId + "\n" +
+                "Status: Inactive\n\n" +
+                "No further auto-debits will be made from your bank account.\n\n" +
+                "If you wish to restart your support, please contact us.\n\n" +
+                "Warm regards,\n" +
+                "Feed The Hunger Seva Sangha";
+
+        helper.setText(body);
+        
+
+        javaMailSender.send(msg);
+
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+
+      
 
 }
 
