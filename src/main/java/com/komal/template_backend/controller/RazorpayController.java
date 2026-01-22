@@ -2637,15 +2637,15 @@ Donourentity decryptedMonthly =
                 amountPaid
         );
 
-
-                    mailService.sendDonationReceiptWithAttachment(
-                            decryptedParent.getEmail(),
-                            decryptedParent.getFirstName() + " " + decryptedParent.getLastName(),
-                            amountPaid,
-                            paymentId,
-                            pdf,
-                            "Monthly_Donation_" + paidCount + "_" + paymentId + ".pdf"
-                    );
+mailService.sendDonationReceiptWithAttachment(
+        decryptedMonthly.getEmail(),
+        decryptedMonthly.getFirstName() + " " + decryptedMonthly.getLastName(),
+        amountPaid,
+        paymentId,
+        pdf,
+        "Monthly_Donation_" + paymentId + ".pdf"
+);
+                    
 
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -2971,6 +2971,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
