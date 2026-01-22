@@ -2677,8 +2677,8 @@ mailService.sendDonationReceiptWithAttachment(
 
                 if (Boolean.FALSE.equals(donor.getCancelMailSent())) {
                     mailService.sendMandateCancellationMail(
-                        decrypted.getEmail(),
-                        decrypted.getFirstName() + " " + decrypted.getLastName(),
+                        donor.getEmail(),
+                        donor.getFirstName() + " " + donor.getLastName(),
                         finalSubId
                 );
 
@@ -2971,6 +2971,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
