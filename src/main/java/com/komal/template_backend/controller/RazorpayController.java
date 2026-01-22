@@ -2551,12 +2551,12 @@ public ResponseEntity<?> webhook(
                                     pdfReceiptService.generateMandateConfirmation(decrypted);
 
                             mailService.sendMandateConfirmationMail(
-        decrypted.getEmail(),
-        decrypted.getFirstName() + " " + decrypted.getLastName(),
-        subscriptionId,
-        decrypted.getMonthlyAmount(),
-        pdf
-                                    "Mandate_Confirmation_" + subscriptionId + ".pdf"
+                            decrypted.getEmail(),
+                            decrypted.getFirstName() + " " + decrypted.getLastName(),
+                                subscriptionId,
+                                decrypted.getMonthlyAmount(),
+                                    pdf
+                                    
                             );
 
                             donor.setMandateMailSent(true);
@@ -2971,6 +2971,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
