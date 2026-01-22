@@ -2550,12 +2550,12 @@ public ResponseEntity<?> webhook(
                             byte[] pdf =
                                     pdfReceiptService.generateMandateConfirmation(decrypted);
 
-                            mailService.sendDonationReceiptWithAttachment(
-                                    decrypted.getEmail(),
-                                    decrypted.getFirstName() + " " + decrypted.getLastName(),
-                                    decrypted.getMonthlyAmount(),
-                                    subscriptionId,
-                                    pdf,
+                            mailService.sendMandateConfirmationMail(
+        decrypted.getEmail(),
+        decrypted.getFirstName() + " " + decrypted.getLastName(),
+        subscriptionId,
+        decrypted.getMonthlyAmount(),
+        pdf
                                     "Mandate_Confirmation_" + subscriptionId + ".pdf"
                             );
 
@@ -2625,15 +2625,18 @@ public ResponseEntity<?> webhook(
                 donationRepo.save(monthly);
 
                 try {
-                    Donourentity decryptedParent =
-                            donationService.findByIdDecrypt(parent.getId());
+                    // Donourentity decryptedParent =
+                    //         donationService.findByIdDecrypt(parent.getId());
+Donourentity decryptedMonthly =
+        donationService.findByIdDecrypt(monthly.getId());
 
                     byte[] pdf =
-                            pdfReceiptService.generateMonthlyDebitReceipt(
-                                    decryptedParent,
-                                    paymentId,
-                                    amountPaid
-                            );
+        pdfReceiptService.generateMonthlyDebitReceipt(
+                decryptedMonthly,
+                paymentId,
+                amountPaid
+        );
+
 
                     mailService.sendDonationReceiptWithAttachment(
                             decryptedParent.getEmail(),
@@ -2673,11 +2676,12 @@ public ResponseEntity<?> webhook(
                 donationRepo.save(donor);
 
                 if (Boolean.FALSE.equals(donor.getCancelMailSent())) {
-                    mailService.sendMail(
-                            donor.getEmail(),
-                            "Subscription stopped",
-                            "Your mandate or subscription has been stopped.\n\nRegards,\nFeed The Hunger Seva Sangha"
-                    );
+                    mailService.sendMandateCancellationMail(
+                        decrypted.getEmail(),
+                        decrypted.getFirstName() + " " + decrypted.getLastName(),
+                        finalSubId
+                );
+
                     donor.setCancelMailSent(true);
                     donationRepo.save(donor);
                 }
@@ -2967,6 +2971,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
