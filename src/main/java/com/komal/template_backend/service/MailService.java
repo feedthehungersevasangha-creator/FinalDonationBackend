@@ -218,8 +218,8 @@ public class MailService {
         public void sendMandateCancellationMail(
         String email,
         String name,
-        String subscriptionId,
-        byte[] pdfBytes
+        String subscriptionId
+       
 ) {
     try {
         MimeMessage msg = javaMailSender.createMimeMessage();
