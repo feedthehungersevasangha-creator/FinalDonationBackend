@@ -428,7 +428,7 @@ if (donor.getMandateFrequency() != null)
 
                 d.setEmail(safeDecrypt(d.getEmail(), key));
                 d.setMobile(safeDecrypt(d.getMobile(), key));
-
+                d.setUniqueId(safeDecrypt(d.getUniqueId(), key)); // ✅ FIX
                 d.setPaymentInfo(safeDecrypt(d.getPaymentInfo(), key));
                 d.setUpiId(safeDecrypt(d.getUpiId(), key));
                 d.setWallet(safeDecrypt(d.getWallet(), key));
