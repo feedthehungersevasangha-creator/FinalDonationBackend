@@ -1702,44 +1702,44 @@ private PdfReceiptServic pdfReceiptService;
             return fallback;
         }
     }
-private long getNextStartDate(int startDay) {
-
-    ZoneId ist = ZoneId.of("Asia/Kolkata");
-    LocalDateTime now = LocalDateTime.now(ist);
-
-    int today = now.getDayOfMonth();
-    LocalDate startDate;
-
-    if (today < startDay) {
-        startDate = now.toLocalDate()
-                .withDayOfMonth(
-                        Math.min(startDay, now.toLocalDate().lengthOfMonth()));
-    } else {
-        LocalDate nextMonth = now.toLocalDate().plusMonths(1);
-        startDate = nextMonth.withDayOfMonth(
-                Math.min(startDay, nextMonth.lengthOfMonth()));
-    }
-
-    // ✅ FIXED TIME: 11:00 AM IST
-    LocalDateTime startDateTime = startDate.atTime(11, 0, 0);
-
-    return startDateTime.atZone(ist).toEpochSecond();
-}
-// private long getNextStartDateAlwaysNextMonth(int startDay) {
+// private long getNextStartDate(int startDay) {
 
 //     ZoneId ist = ZoneId.of("Asia/Kolkata");
 //     LocalDateTime now = LocalDateTime.now(ist);
 
-//     LocalDate nextMonthDate = now.toLocalDate().plusMonths(1);
+//     int today = now.getDayOfMonth();
+//     LocalDate startDate;
 
-//     LocalDate startDate = nextMonthDate.withDayOfMonth(
-//             Math.min(startDay, nextMonthDate.lengthOfMonth()));
+//     if (today < startDay) {
+//         startDate = now.toLocalDate()
+//                 .withDayOfMonth(
+//                         Math.min(startDay, now.toLocalDate().lengthOfMonth()));
+//     } else {
+//         LocalDate nextMonth = now.toLocalDate().plusMonths(1);
+//         startDate = nextMonth.withDayOfMonth(
+//                 Math.min(startDay, nextMonth.lengthOfMonth()));
+//     }
 
 //     // ✅ FIXED TIME: 11:00 AM IST
 //     LocalDateTime startDateTime = startDate.atTime(11, 0, 0);
 
 //     return startDateTime.atZone(ist).toEpochSecond();
 // }
+private long getNextStartDate(int startDay) {
+
+    ZoneId ist = ZoneId.of("Asia/Kolkata");
+    LocalDateTime now = LocalDateTime.now(ist);
+
+    LocalDate nextMonthDate = now.toLocalDate().plusMonths(1);
+
+    LocalDate startDate = nextMonthDate.withDayOfMonth(
+            Math.min(startDay, nextMonthDate.lengthOfMonth()));
+
+    // ✅ FIXED TIME: 11:00 AM IST
+    LocalDateTime startDateTime = startDate.atTime(11, 0, 0);
+
+    return startDateTime.atZone(ist).toEpochSecond();
+}
 
     
 
@@ -3091,6 +3091,7 @@ private void updateDonorFromSubscriptionEntity(JSONObject sub, String event) {
         
 }
 // --------------------------------------------------------------------------------------
+
 
 
 
